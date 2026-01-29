@@ -1,0 +1,124 @@
+// File operation implementations for MainWindow
+// Add these to MainWindow.cpp at the end
+
+void MainWindow::newProject()
+{
+    // TODO: Confirm if user wants to save current project
+    
+    // Get FSM name from user
+    bool ok;
+    QString fsmName = QInputDialog::getText(this, tr("New FSM Project"),
+                                           tr("Enter FSM name:"), QLineEdit::Normal,
+                                           "MyFSM", &ok);
+    if (!ok || fsmName.isEmpty()) {
+        return;
+    }
+    
+    // Create new FSM
+    FSM *fsm = new FSM(this);
+    fsm->setName(fsmName);
+    m_diagramEditor->setFSM(fsm);
+    
+    // Clear current diagram
+    m_diagramEditor->scene()->clear();
+    
+    m_currentFile.clear();
+    statusBar()->showMessage(tr("New project created: %1").arg(fsmName));
+}
+
+void MainWindow::openProject()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+        tr("Open FSM Project"), "", tr("FSM Files (*.json);;All Files (*)"));
+    
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Error"),
+            tr("Cannot read file %1:\n%2.").arg(fileName).arg(file.errorString()));
+        return;
+    }
+    
+    // TODO: Implement JSON deserialization
+    JSONSerializer serializer;
+    FSM *fsm = serializer.deserialize(file.readAll());
+    
+    if (fsm) {
+        m_diagramEditor->setFSM(fsm);
+        m_currentFile = fileName;
+        statusBar()->showMessage(tr("Loaded: %1").arg(fileName));
+    } else {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to load FSM from file"));
+    }
+}
+
+void MainWindow::saveProject()
+{
+    if (m_currentFile.isEmpty()) {
+        QString fileName = QFileDialog::getSaveFileName(this,
+            tr("Save FSM Project"), "", tr("FSM Files (*.json);;All Files (*)"));
+        
+        if (fileName.isEmpty()) {
+            return;
+        }
+        
+        m_currentFile = fileName;
+    }
+    
+    QFile file(m_currentFile);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, tr("Error"),
+            tr("Cannot write file %1:\n%2.").arg(m_currentFile).arg(file.errorString()));
+        return;
+    }
+    
+    // Serialize to JSON
+    JSONSerializer serializer;
+    QByteArray jsonData = serializer.serialize(m_diagramEditor->fsm());
+    
+    file.write(jsonData);
+    file.close();
+    
+    statusBar()->showMessage(tr("Saved: %1").arg(m_currentFile));
+}
+
+void MainWindow::exportCpp()
+{
+    if (!m_diagramEditor->fsm()) {
+        QMessageBox::warning(this, tr("No FSM"), 
+            tr("Please create an FSM before exporting"));
+        return;
+    }
+    
+    QString fileName = QFileDialog::getSaveFileName(this,
+        tr("Export C++ Code"), "", tr("C++ Files (*.cpp *.h);;All Files (*)"));
+    
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    // Generate C++ code
+    CodeGenerator generator;
+    QString code = generator.generate(m_diagramEditor->fsm());
+    
+    // Write to file
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("Error"),
+            tr("Cannot write file %1:\n%2.").arg(fileName).arg(file.errorString()));
+        return;
+    }
+    
+    QTextStream out(&file);
+    out << code;
+    file.close();
+    
+    statusBar()->showMessage(tr("Exported C++ code to: %1").arg(fileName));
+    
+    // Show success message with preview
+    QMessageBox::information(this, tr("Export Complete"),
+        tr("C++ code has been generated successfully!\n\nFile: %1\n\nYou can now compile this code with your C++ project.").arg(fileName));
+}

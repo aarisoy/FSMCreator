@@ -1,0 +1,127 @@
+#include "PropertiesPanel.h"
+#include "../model/FSM.h"
+#include <QDebug>
+#include <QFont>
+#include <QFormLayout>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QVBoxLayout>
+
+
+PropertiesPanel::PropertiesPanel(QWidget *parent) : QWidget(parent) {
+  QVBoxLayout *layout = new QVBoxLayout(this);
+  layout->setSpacing(10);
+  layout->setContentsMargins(10, 10, 10, 10);
+
+  // Title
+  QLabel *titleLabel = new QLabel("Properties", this);
+  QFont titleFont = titleLabel->font();
+  titleFont.setPointSize(12);
+  titleFont.setBold(true);
+  titleLabel->setFont(titleFont);
+  layout->addWidget(titleLabel);
+
+  // Separator
+  QFrame *line = new QFrame(this);
+  line->setFrameShape(QFrame::HLine);
+  line->setFrameShadow(QFrame::Sunken);
+  layout->addWidget(line);
+
+  // FSM Properties Section Container
+  m_fsmSettingsContainer = new QWidget(this);
+  QVBoxLayout *fsmVLayout = new QVBoxLayout(m_fsmSettingsContainer);
+  fsmVLayout->setContentsMargins(0, 0, 0, 0);
+
+  QLabel *fsmSectionLabel = new QLabel("FSM Settings", m_fsmSettingsContainer);
+  QFont sectionFont = fsmSectionLabel->font();
+  sectionFont.setBold(true);
+  fsmSectionLabel->setFont(sectionFont);
+  fsmVLayout->addWidget(fsmSectionLabel);
+
+  m_formLayout = new QFormLayout();
+
+  // Name row with button
+  QHBoxLayout *nameLayout = new QHBoxLayout();
+  m_nameEdit = new QLineEdit(m_fsmSettingsContainer);
+  m_nameEdit->setPlaceholderText("MyFSM");
+  nameLayout->addWidget(m_nameEdit);
+
+  QPushButton *applyBtn = new QPushButton("Apply", m_fsmSettingsContainer);
+  applyBtn->setToolTip("Apply FSM Name Change");
+  nameLayout->addWidget(applyBtn);
+
+  m_formLayout->addRow("Name:", nameLayout);
+  fsmVLayout->addLayout(m_formLayout);
+
+  layout->addWidget(m_fsmSettingsContainer);
+  m_fsmSettingsContainer->hide(); // Hide initially
+
+  // Connect name edit (on Enter or Focus Loss)
+  connect(m_nameEdit, &QLineEdit::editingFinished, this, [this]() {
+    if (m_fsm) {
+      m_fsm->setName(m_nameEdit->text());
+    }
+  });
+
+  // Connect Apply button
+  connect(applyBtn, &QPushButton::clicked, this, [this]() {
+    if (m_fsm) {
+      m_fsm->setName(m_nameEdit->text());
+      m_fsm->forceUpdate(); // Force code regeneration
+    }
+  });
+
+  // Separator 2
+  QFrame *line2 = new QFrame(this);
+  line2->setFrameShape(QFrame::HLine);
+  line2->setFrameShadow(QFrame::Sunken);
+  layout->addWidget(line2);
+
+  // Info label (for context selection)
+  QLabel *infoLabel =
+      new QLabel("Select a state or transition\nto edit its properties", this);
+  infoLabel->setWordWrap(true);
+  infoLabel->setAlignment(Qt::AlignCenter);
+  infoLabel->setStyleSheet("color: #666; padding: 20px;");
+  QFont infoFont = infoLabel->font();
+  infoFont.setPointSize(10);
+  infoLabel->setFont(infoFont);
+  layout->addWidget(infoLabel);
+
+  layout->addStretch();
+
+  // Style the panel
+  setStyleSheet(R"(
+        QWidget {
+            background-color: #ffffff;
+            border-left: 1px solid #ddd;
+        }
+    )");
+
+  setMinimumWidth(280);
+}
+
+PropertiesPanel::~PropertiesPanel() {}
+
+void PropertiesPanel::setFSM(FSM *fsm) {
+  if (m_fsm == fsm)
+    return;
+
+  if (m_fsm) {
+    m_fsm->disconnect(this);
+  }
+
+  m_fsm = fsm;
+
+  if (m_fsm) {
+    m_fsmSettingsContainer->show();
+    m_nameEdit->setText(m_fsm->name());
+    connect(m_fsm, &FSM::nameChanged, m_nameEdit, &QLineEdit::setText);
+  } else {
+    m_fsmSettingsContainer->hide();
+    m_nameEdit->clear();
+  }
+}

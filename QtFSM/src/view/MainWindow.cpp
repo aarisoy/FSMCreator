@@ -1,0 +1,592 @@
+#include "MainWindow.h"
+#include "../codegen/CodeGenerator.h"
+#include "../model/FSM.h"
+#include "../parsing/CodeParser.h"
+#include "../serialization/JSONSerializer.h"
+#include "CodePreviewPanel.h"
+#include "DiagramEditor.h"
+#include "PropertiesPanel.h"
+#include "StateItem.h"
+#include <QAction>
+#include <QApplication>
+#include <QDebug>
+#include <QDockWidget>
+#include <QFileDialog>
+#include <QFont>
+#include <QGraphicsItem>
+#include <QInputDialog>
+#include <QLabel>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QStatusBar>
+#include <QStyle>
+#include <QTextStream>
+#include <QToolBar>
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), m_diagramEditor(nullptr), m_propertiesPanel(nullptr),
+      m_darkTheme(false) {
+  setupUi();
+  createActions();
+  createMenus();
+  createToolBars();
+  createDockWidgets();
+
+  setWindowTitle("QtFSM Designer");
+  resize(1400, 900);
+
+  // Apply initial theme
+  applyTheme();
+
+  // Add status bar
+  statusBar()->showMessage("Ready");
+}
+
+MainWindow::~MainWindow() {}
+
+void MainWindow::setupUi() {
+  // Create central diagram editor
+  m_diagramEditor = new DiagramEditor(this);
+  setCentralWidget(m_diagramEditor);
+
+  // Connect diagram changes to code preview
+  // Connect diagram changes to code preview
+  // Manual Mode: Disable auto-update
+  // connect(m_diagramEditor, &DiagramEditor::fsmChanged, this,
+  // &MainWindow::updateCodePreview);
+
+  // Create properties panel
+  m_propertiesPanel = new PropertiesPanel(this);
+
+  // Create code preview panel
+  m_codePreviewPanel = new CodePreviewPanel(this);
+  connect(m_codePreviewPanel, &CodePreviewPanel::updateDiagramRequested, this,
+          &MainWindow::updateDiagramFromCode);
+  connect(m_codePreviewPanel, &CodePreviewPanel::generateCodeRequested, this,
+          &MainWindow::updateCodePreview);
+}
+
+void MainWindow::createActions() {
+  // New action
+  m_newAction = new QAction(tr("&New"), this);
+  m_newAction->setShortcuts(QKeySequence::New);
+  m_newAction->setStatusTip(tr("Create a new FSM project"));
+  connect(m_newAction, &QAction::triggered, this, &MainWindow::newProject);
+
+  // Open action
+  m_openAction = new QAction(tr("&Open..."), this);
+  m_openAction->setShortcuts(QKeySequence::Open);
+  m_openAction->setStatusTip(tr("Open an existing FSM project"));
+  connect(m_openAction, &QAction::triggered, this, &MainWindow::openProject);
+
+  // Save action
+  m_saveAction = new QAction(tr("&Save"), this);
+  m_saveAction->setShortcuts(QKeySequence::Save);
+  m_saveAction->setStatusTip(tr("Save the current FSM project"));
+  connect(m_saveAction, &QAction::triggered, this, &MainWindow::saveProject);
+
+  // Export C++ action
+  m_exportAction = new QAction(tr("Export C++..."), this);
+  m_exportAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
+  m_exportAction->setStatusTip(tr("Generate C++ code from the FSM"));
+  connect(m_exportAction, &QAction::triggered, this, &MainWindow::exportCpp);
+
+  // Exit action
+  m_exitAction = new QAction(tr("E&xit"), this);
+  m_exitAction->setShortcuts(QKeySequence::Quit);
+  m_exitAction->setStatusTip(tr("Exit the application"));
+  connect(m_exitAction, &QAction::triggered, this, &QWidget::close);
+
+  // Toggle theme action
+  m_toggleThemeAction = new QAction(tr("Dark Theme"), this);
+  m_toggleThemeAction->setCheckable(true);
+  m_toggleThemeAction->setChecked(false);
+  m_toggleThemeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
+  m_toggleThemeAction->setStatusTip(tr("Toggle between light and dark theme"));
+  connect(m_toggleThemeAction, &QAction::triggered, this,
+          &MainWindow::toggleTheme);
+}
+
+void MainWindow::createMenus() {
+  QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
+  fileMenu->addAction(m_newAction);
+  fileMenu->addAction(m_openAction);
+  fileMenu->addAction(m_saveAction);
+  fileMenu->addSeparator();
+  fileMenu->addAction(m_exportAction);
+  fileMenu->addSeparator();
+  fileMenu->addAction(m_exitAction);
+
+  QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
+  // TODO: Add edit actions
+
+  QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
+  viewMenu->addAction(m_toggleThemeAction);
+
+  QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
+  // TODO: Add tools actions
+
+  QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+  // TODO: Add help actions
+}
+
+void MainWindow::createToolBars() {
+  QToolBar *fileToolBar = addToolBar(tr("File"));
+  fileToolBar->setIconSize(QSize(24, 24));
+  fileToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  fileToolBar->addAction(m_newAction);
+  fileToolBar->addAction(m_openAction);
+  fileToolBar->addAction(m_saveAction);
+
+  addToolBarBreak();
+
+  QToolBar *editToolBar = addToolBar(tr("Edit"));
+  editToolBar->setIconSize(QSize(24, 24));
+  editToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+
+  // Add state button
+  QAction *addStateAction = new QAction(tr("Add State"), this);
+  addStateAction->setToolTip(
+      tr("Add a new state to the diagram (Shortcut: Ctrl+N)"));
+  addStateAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_N));
+  connect(addStateAction, &QAction::triggered, m_diagramEditor,
+          &DiagramEditor::addState);
+  editToolBar->addAction(addStateAction);
+
+  // Add transition button
+  QAction *addTransitionAction = new QAction(tr("Add Transition"), this);
+  addTransitionAction->setToolTip(tr(
+      "Connect states with a transition\n(Select source, then target state)"));
+  connect(addTransitionAction, &QAction::triggered, m_diagramEditor,
+          &DiagramEditor::startTransitionMode);
+  editToolBar->addAction(addTransitionAction);
+
+  editToolBar->addSeparator();
+
+  // Delete button
+  QAction *deleteAction = new QAction(tr("Delete"), this);
+  deleteAction->setShortcut(QKeySequence::Delete);
+  deleteAction->setToolTip(tr("Delete selected items"));
+  connect(deleteAction, &QAction::triggered, m_diagramEditor,
+          &DiagramEditor::deleteSelected);
+  editToolBar->addAction(deleteAction);
+}
+
+void MainWindow::createDockWidgets() {
+  // Properties dock widget (right side)
+  QDockWidget *propertiesDock = new QDockWidget(tr("Properties"), this);
+  propertiesDock->setWidget(m_propertiesPanel);
+  addDockWidget(Qt::RightDockWidgetArea, propertiesDock);
+
+  // Code preview dock widget (bottom)
+  QDockWidget *codePreviewDock =
+      new QDockWidget(tr("Generated C++ Code"), this);
+  codePreviewDock->setWidget(m_codePreviewPanel);
+  addDockWidget(Qt::BottomDockWidgetArea, codePreviewDock);
+
+  // Set minimum height for code preview
+  codePreviewDock->setMinimumHeight(200);
+}
+
+void MainWindow::updateCodePreview() {
+  if (m_diagramEditor && m_diagramEditor->fsm()) {
+    m_codePreviewPanel->updateCode(m_diagramEditor->fsm());
+    statusBar()->showMessage(tr("Code generated from FSM model"), 1000);
+  } else {
+    m_codePreviewPanel->clearCode();
+  }
+}
+
+// File Operations
+void MainWindow::newProject() {
+  // Get FSM name from user
+  bool ok;
+  QString fsmName =
+      QInputDialog::getText(this, tr("New FSM Project"), tr("Enter FSM name:"),
+                            QLineEdit::Normal, "MyFSM", &ok);
+  if (!ok || fsmName.isEmpty()) {
+    return;
+  }
+
+  // Create new FSM
+  FSM *fsm = new FSM(this);
+  fsm->setName(fsmName);
+  m_diagramEditor->setFSM(fsm);
+  m_propertiesPanel->setFSM(fsm);
+
+  // Disable automatic updates for "Manual Mode"
+  // connect(fsm, &FSM::modified, this, &MainWindow::updateCodePreview);
+
+  // Initial window title
+  connect(fsm, &FSM::nameChanged, this, [this](const QString &name) {
+    setWindowTitle(QString("QtFSM Designer - %1").arg(name));
+  });
+
+  m_currentFile.clear();
+  setWindowTitle(QString("QtFSM Designer - %1").arg(fsmName));
+  statusBar()->showMessage(tr("New project created: %1").arg(fsmName));
+}
+
+void MainWindow::openProject() {
+  QString fileName =
+      QFileDialog::getOpenFileName(this, tr("Open FSM Project"), "",
+                                   tr("FSM Files (*.json);;All Files (*)"));
+
+  if (fileName.isEmpty()) {
+    return;
+  }
+
+  QFile file(fileName);
+  if (!file.open(QIODevice::ReadOnly)) {
+    QMessageBox::warning(
+        this, tr("Error"),
+        tr("Cannot read file %1:\n%2.").arg(fileName).arg(file.errorString()));
+    return;
+  }
+
+  // TODO: Implement JSON deserialization properly
+  QMessageBox::information(
+      this, tr("Not Implemented"),
+      tr("JSON loading will be implemented in the next update.\n\nFor now, use "
+         "'New' to create a project and 'Export C++' to generate code."));
+
+  m_currentFile = fileName;
+  statusBar()->showMessage(tr("Loaded: %1").arg(fileName));
+}
+
+void MainWindow::saveProject() {
+  if (m_currentFile.isEmpty()) {
+    QString fileName =
+        QFileDialog::getSaveFileName(this, tr("Save FSM Project"), "",
+                                     tr("FSM Files (*.json);;All Files (*)"));
+
+    if (fileName.isEmpty()) {
+      return;
+    }
+
+    m_currentFile = fileName;
+  }
+
+  // TODO: Implement JSON serialization properly
+  QMessageBox::information(
+      this, tr("Not Fully Implemented"),
+      tr("JSON saving will be fully implemented in the next update.\n\nFor "
+         "now, use 'Export C++' to save your FSM as generated code."));
+
+  statusBar()->showMessage(tr("Saved: %1").arg(m_currentFile));
+}
+
+void MainWindow::exportCpp() {
+  if (!m_diagramEditor->fsm() || m_diagramEditor->fsm()->states().isEmpty()) {
+    QMessageBox::warning(
+        this, tr("No FSM"),
+        tr("Please create at least one state before exporting.\n\nUse 'New' to "
+           "create a project and 'Add State' to add states."));
+    return;
+  }
+
+  QString fileName = QFileDialog::getSaveFileName(
+      this, tr("Export C++ Code"), "",
+      tr("C++ Header Files (*.h);;C++ Source Files (*.cpp);;All Files (*)"));
+
+  if (fileName.isEmpty()) {
+    return;
+  }
+
+  // Generate C++ code
+  CodeGenerator generator;
+  QString code = generator.generate(m_diagramEditor->fsm());
+
+  // Write to file
+  QFile file(fileName);
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QMessageBox::warning(
+        this, tr("Error"),
+        tr("Cannot write file %1:\n%2.").arg(fileName).arg(file.errorString()));
+    return;
+  }
+
+  QTextStream out(&file);
+  out << code;
+  file.close();
+
+  statusBar()->showMessage(tr("Exported C++ code to: %1").arg(fileName));
+
+  // Show success message
+  QMessageBox::information(
+      this, tr("Export Complete"),
+      tr("C++ code has been generated successfully!\n\nFile: %1\n\nYou can now "
+         "compile this code with your C++ project.")
+          .arg(fileName));
+}
+
+void MainWindow::updateDiagramFromCode() {
+  QString code = m_codePreviewPanel->code();
+  if (code.isEmpty()) {
+    return;
+  }
+
+  // Parse code
+  CodeParser parser;
+  FSM *newFsm = parser.parse(code, this);
+
+  if (!newFsm) {
+    QMessageBox::warning(
+        this, tr("Parsing Failed"),
+        tr("Could not parse code:\n%1").arg(parser.lastError()));
+    return;
+  }
+
+  // Preserve FSM name if not found in code
+  if (newFsm->name().isEmpty() && m_diagramEditor->fsm()) {
+    newFsm->setName(m_diagramEditor->fsm()->name());
+  }
+
+  // Switch FSM
+  // Note: Old FSM memory management depends on ownership policy.
+  // They are children of MainWindow so they will be eventually deleted,
+  // but good practice to delete old one if we replace it.
+  FSM *oldFsm = m_diagramEditor->fsm();
+
+  m_diagramEditor->setFSM(newFsm);
+
+  // 1. Capture old positions
+  QMap<QString, QPointF> oldPositions;
+  QRectF bounds;
+  if (m_diagramEditor->fsm()) {
+    for (State *s : m_diagramEditor->fsm()->states()) {
+      oldPositions.insert(s->name(), s->position());
+      // Track bounds to know where to put new stuff
+      if (bounds.isNull())
+        bounds = QRectF(s->position(), QSizeF(10, 10));
+      else
+        bounds = bounds.united(QRectF(s->position(), QSizeF(100, 100)));
+    }
+  }
+
+  // 2. Apply positions to new FSM
+  QList<State *> states = newFsm->states();
+
+  // Check how many we can preserve and if they are overlapping
+  int preservedCount = 0;
+  QSet<QString>
+      distinctPositions; // Use string representation of point to check overlap
+  bool hasOverlap = false;
+
+  for (State *s : states) {
+    if (oldPositions.contains(s->name())) {
+      preservedCount++;
+      QPointF pos = oldPositions.value(s->name());
+      QString posKey = QString("%1,%2").arg(pos.x()).arg(pos.y());
+      if (distinctPositions.contains(posKey)) {
+        hasOverlap = true;
+      }
+      distinctPositions.insert(posKey);
+    }
+  }
+
+  // Strategy:
+  // 1. Fresh Import (preservedCount == 0) -> GRID
+  // 2. Overlap Detected (Stack issue) -> GRID (Fix it!)
+  // 3. Otherwise -> Preserve + Append
+
+  bool useGridLayout = (preservedCount == 0) || hasOverlap ||
+                       (states.count() > 5 && preservedCount < 2);
+
+  if (useGridLayout) {
+    // Fresh or Fix Grid Layout
+    int cols = qCeil(qSqrt(states.count()));
+    int spacing = 300;
+    for (int i = 0; i < states.count(); ++i) {
+      int row = i / cols;
+      int col = i % cols;
+      states[i]->setPosition(QPointF(col * spacing, row * spacing));
+    }
+    statusBar()->showMessage(
+        tr("Diagram updated: Fresh Grid Layout applied (%1 states)")
+            .arg(states.count()));
+  } else {
+    // Preserve + Append
+    double nextX = bounds.isNull() ? 0 : bounds.right() + 300;
+    double nextY = bounds.isNull() ? 0 : bounds.top();
+
+    for (int i = 0; i < states.count(); ++i) {
+      State *s = states[i];
+      if (oldPositions.contains(s->name())) {
+        s->setPosition(oldPositions.value(s->name()));
+      } else {
+        // New state found! Place it to the right
+        s->setPosition(QPointF(nextX, nextY));
+        nextX += 300;
+      }
+    }
+    statusBar()->showMessage(tr("Diagram updated: Layout Preserved (%1 states)")
+                                 .arg(states.count()));
+  }
+
+  // Switch FSM (DiagramEditor will handle scene rebuild safe and clean)
+  m_diagramEditor->setFSM(newFsm);
+  m_propertiesPanel->setFSM(newFsm); // Connect properties panel
+
+  // Window title sync
+  connect(newFsm, &FSM::nameChanged, this, [this](const QString &name) {
+    setWindowTitle(QString("QtFSM Designer - %1").arg(name));
+  });
+  setWindowTitle(QString("QtFSM Designer - %1").arg(newFsm->name()));
+
+  // Manual Mode: No auto-connect
+  // connect(newFsm, &FSM::modified, this, &MainWindow::updateCodePreview);
+
+  // Delete old FSM if it existed
+  if (oldFsm) {
+    oldFsm->deleteLater();
+  }
+}
+
+void MainWindow::toggleTheme() {
+  m_darkTheme = !m_darkTheme;
+  m_toggleThemeAction->setChecked(m_darkTheme);
+  applyTheme();
+  statusBar()->showMessage(
+      m_darkTheme ? tr("Dark theme enabled") : tr("Light theme enabled"), 2000);
+}
+
+void MainWindow::applyTheme() {
+  if (m_darkTheme) {
+    // Dark theme - VS Code inspired
+    setStyleSheet(R"(
+            QMainWindow {
+                background-color: #1e1e1e;
+            }
+            QToolBar {
+                background-color: #2d2d30;
+                border: 1px solid #3e3e42;
+                spacing: 8px;
+                padding: 6px;
+            }
+            QToolButton {
+                min-width: 80px;
+                min-height: 36px;
+                padding: 6px 12px;
+                font-size: 11pt;
+                color: #e0e0e0;
+                background-color: #3e3e42;
+                border: 1px solid #555555;
+                border-radius: 4px;
+            }
+            QToolButton:hover {
+                background-color: #094771;
+                border-color: #007acc;
+            }
+            QToolButton:pressed {
+                background-color: #005a9e;
+            }
+            QMenuBar {
+                background-color: #2d2d30;
+                color: #e0e0e0;
+                border-bottom: 1px solid #3e3e42;
+                padding: 4px;
+                font-size: 11pt;
+            }
+            QMenuBar::item {
+                padding: 6px 12px;
+                background-color: transparent;
+                color: #e0e0e0;
+            }
+            QMenuBar::item:selected {
+                background-color: #094771;
+                border-radius: 4px;
+            }
+            QMenu {
+                font-size: 10pt;
+                background-color: #2d2d30;
+                color: #e0e0e0;
+                border: 1px solid #3e3e42;
+            }
+            QMenu::item {
+                padding: 8px 30px 8px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #094771;
+            }
+            QStatusBar {
+                background-color: #2d2d30;
+                color: #e0e0e0;
+                border-top: 1px solid #3e3e42;
+                font-size: 10pt;
+            }
+            QDockWidget {
+                color: #e0e0e0;
+            }
+            QDockWidget::title {
+                background-color: #2d2d30;
+                padding: 6px;
+            }
+        )");
+
+    // Update diagram editor background for dark theme
+    m_diagramEditor->setBackgroundBrush(QBrush(QColor(30, 30, 30)));
+
+  } else {
+    // Light theme
+    setStyleSheet(R"(
+            QMainWindow {
+                background-color: #f5f5f5;
+            }
+            QToolBar {
+                background-color: #ffffff;
+                border: 1px solid #ddd;
+                spacing: 8px;
+                padding: 6px;
+            }
+            QToolButton {
+                min-width: 80px;
+                min-height: 36px;
+                padding: 6px 12px;
+                font-size: 11pt;
+                background-color: #ffffff;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            QToolButton:hover {
+                background-color: #e3f2fd;
+                border-color: #2196f3;
+            }
+            QToolButton:pressed {
+                background-color: #bbdefb;
+            }
+            QMenuBar {
+                background-color: #ffffff;
+                border-bottom: 1px solid #ddd;
+                padding: 4px;
+                font-size: 11pt;
+            }
+            QMenuBar::item {
+                padding: 6px 12px;
+                background-color: transparent;
+            }
+            QMenuBar::item:selected {
+                background-color: #e3f2fd;
+                border-radius: 4px;
+            }
+            QMenu {
+                font-size: 10pt;
+                border: 1px solid #ddd;
+            }
+            QMenu::item {
+                padding: 8px 30px 8px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #e3f2fd;
+            }
+            QStatusBar {
+                background-color: #ffffff;
+                border-top: 1px solid #ddd;
+                font-size: 10pt;
+            }
+        )");
+
+    // Update diagram editor background for light theme
+    m_diagramEditor->setBackgroundBrush(QBrush(QColor(250, 250, 250)));
+  }
+}

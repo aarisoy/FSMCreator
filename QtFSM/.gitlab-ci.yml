@@ -1,0 +1,123 @@
+stages:
+  - build
+  - test
+  - quality
+  - package
+  - deploy
+
+variables:
+  QT_VERSION: "6.5"
+
+# ============================================
+# Build Stage
+# ============================================
+
+build:linux:
+  stage: build
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update
+    - apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev libgl1-mesa-dev
+  script:
+    - cmake --preset release
+    - cmake --build build-release
+  artifacts:
+    paths:
+      - build-release/QtFSM
+    expire_in: 1 day
+  only:
+    - main
+    - develop
+    - tags
+
+build:windows:
+  stage: build
+  tags:
+    - windows
+  script:
+    - cmake --preset release
+    - cmake --build build-release --config Release
+  artifacts:
+    paths:
+      - build-release/Release/QtFSM.exe
+    expire_in: 1 day
+  only:
+    - main
+    - develop
+    - tags
+
+# ============================================
+# Test Stage
+# ============================================
+
+test:unit:
+  stage: test
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update
+    - apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev libgl1-mesa-dev
+  script:
+    - cmake --preset dev
+    - cmake --build build
+    - cd build && ctest --output-on-failure
+  dependencies:
+    - build:linux
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# ============================================
+# Quality Stage
+# ============================================
+
+quality:lint:
+  stage: quality
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update
+    - apt-get install -y clang-tidy
+  script:
+    - find src -name '*.cpp' -o -name '*.h' | xargs clang-tidy --quiet
+  allow_failure: true
+  only:
+    - main
+    - develop
+    - merge_requests
+
+quality:format-check:
+  stage: quality
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update
+    - apt-get install -y clang-format
+  script:
+    - find src -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+  allow_failure: true
+  only:
+    - merge_requests
+
+# ============================================
+# Package Stage (Future Implementation)
+# ============================================
+
+# package:linux:
+#   stage: package
+#   image: ubuntu:22.04
+#   script:
+#     - echo "Create AppImage or .deb package"
+#   only:
+#     - tags
+
+# ============================================
+# Deploy Stage
+# ============================================
+
+deploy:release:
+  stage: deploy
+  script:
+    - echo "Creating GitLab release with binaries"
+    # Add release creation logic here
+  only:
+    - tags
+  when: manual

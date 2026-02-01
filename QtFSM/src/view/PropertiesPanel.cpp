@@ -1,5 +1,7 @@
 #include "PropertiesPanel.h"
 #include "../model/FSM.h"
+#include "../model/State.h"
+#include "../model/Transition.h"
 #include <QDebug>
 #include <QFont>
 #include <QFormLayout>
@@ -8,8 +10,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QTreeWidget>
 #include <QVBoxLayout>
-
 
 PropertiesPanel::PropertiesPanel(QWidget *parent) : QWidget(parent) {
   QVBoxLayout *layout = new QVBoxLayout(this);
@@ -55,6 +57,34 @@ PropertiesPanel::PropertiesPanel(QWidget *parent) : QWidget(parent) {
 
   m_formLayout->addRow("Name:", nameLayout);
   fsmVLayout->addLayout(m_formLayout);
+
+  // States list
+  QLabel *statesLabel = new QLabel("States:", m_fsmSettingsContainer);
+  QFont stateFont = statesLabel->font();
+  stateFont.setBold(true);
+  statesLabel->setFont(stateFont);
+  fsmVLayout->addWidget(statesLabel);
+
+  m_statesTree = new QTreeWidget(m_fsmSettingsContainer);
+  m_statesTree->setHeaderHidden(true);
+  m_statesTree->setMaximumHeight(120);
+  m_statesTree->setStyleSheet(
+      "QTreeWidget { background-color: #f9f9f9; border: 1px solid #ddd; }");
+  fsmVLayout->addWidget(m_statesTree);
+
+  // Transitions list
+  QLabel *transitionsLabel = new QLabel("Transitions:", m_fsmSettingsContainer);
+  QFont transFont = transitionsLabel->font();
+  transFont.setBold(true);
+  transitionsLabel->setFont(transFont);
+  fsmVLayout->addWidget(transitionsLabel);
+
+  m_transitionsTree = new QTreeWidget(m_fsmSettingsContainer);
+  m_transitionsTree->setHeaderHidden(true);
+  m_transitionsTree->setMaximumHeight(120);
+  m_transitionsTree->setStyleSheet(
+      "QTreeWidget { background-color: #f9f9f9; border: 1px solid #ddd; }");
+  fsmVLayout->addWidget(m_transitionsTree);
 
   layout->addWidget(m_fsmSettingsContainer);
   m_fsmSettingsContainer->hide(); // Hide initially
@@ -120,8 +150,57 @@ void PropertiesPanel::setFSM(FSM *fsm) {
     m_fsmSettingsContainer->show();
     m_nameEdit->setText(m_fsm->name());
     connect(m_fsm, &FSM::nameChanged, m_nameEdit, &QLineEdit::setText);
+
+    // Connect to FSM signals for updates
+    connect(m_fsm, &FSM::stateAdded, this, &PropertiesPanel::updateStates);
+    connect(m_fsm, &FSM::stateRemoved, this, &PropertiesPanel::updateStates);
+    connect(m_fsm, &FSM::transitionAdded, this,
+            &PropertiesPanel::updateTransitions);
+    connect(m_fsm, &FSM::transitionRemoved, this,
+            &PropertiesPanel::updateTransitions);
+
+    // Initial update
+    updateStates();
+    updateTransitions();
   } else {
     m_fsmSettingsContainer->hide();
     m_nameEdit->clear();
+    m_statesTree->clear();
+    m_transitionsTree->clear();
+  }
+}
+
+void PropertiesPanel::updateStates() {
+  if (!m_fsm)
+    return;
+
+  m_statesTree->clear();
+
+  for (State *state : m_fsm->states()) {
+    QTreeWidgetItem *item = new QTreeWidgetItem(m_statesTree);
+    item->setText(0, state->name());
+    item->setIcon(0, QIcon());
+  }
+}
+
+void PropertiesPanel::updateTransitions() {
+  if (!m_fsm)
+    return;
+
+  m_transitionsTree->clear();
+
+  for (Transition *trans : m_fsm->transitions()) {
+    QTreeWidgetItem *item = new QTreeWidgetItem(m_transitionsTree);
+    QString text =
+        QString("%1 → %2")
+            .arg(trans->sourceState() ? trans->sourceState()->name() : "?")
+            .arg(trans->targetState() ? trans->targetState()->name() : "?");
+
+    if (!trans->event().isEmpty()) {
+      text += QString(" [%1]").arg(trans->event());
+    }
+
+    item->setText(0, text);
+    item->setIcon(0, QIcon());
   }
 }

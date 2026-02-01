@@ -91,6 +91,14 @@ void MainWindow::createActions() {
   m_exportAction->setStatusTip(tr("Generate C++ code from the FSM"));
   connect(m_exportAction, &QAction::triggered, this, &MainWindow::exportCpp);
 
+  // Export JSON action
+  m_exportJsonAction = new QAction(tr("Export JSON..."), this);
+  m_exportJsonAction->setShortcut(
+      QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_E));
+  m_exportJsonAction->setStatusTip(tr("Export FSM to JSON format"));
+  connect(m_exportJsonAction, &QAction::triggered, this,
+          &MainWindow::exportJson);
+
   // Exit action
   m_exitAction = new QAction(tr("E&xit"), this);
   m_exitAction->setShortcuts(QKeySequence::Quit);
@@ -114,6 +122,7 @@ void MainWindow::createMenus() {
   fileMenu->addAction(m_saveAction);
   fileMenu->addSeparator();
   fileMenu->addAction(m_exportAction);
+  fileMenu->addAction(m_exportJsonAction);
   fileMenu->addSeparator();
   fileMenu->addAction(m_exitAction);
 
@@ -318,6 +327,44 @@ void MainWindow::exportCpp() {
       tr("C++ code has been generated successfully!\n\nFile: %1\n\nYou can now "
          "compile this code with your C++ project.")
           .arg(fileName));
+}
+
+void MainWindow::exportJson() {
+  // Get FSM from diagram editor
+  FSM *fsm = m_diagramEditor->fsm();
+
+  if (!fsm || fsm->states().isEmpty()) {
+    QMessageBox::warning(this, tr("No FSM to Export"),
+                         tr("Please create at least one state before "
+                            "exporting.\\n\\nUse 'New' to "
+                            "create a project and add states to your FSM."));
+    return;
+  }
+
+  // Show file save dialog
+  QString fileName = QFileDialog::getSaveFileName(
+      this, tr("Export JSON"), "", tr("JSON Files (*.json);;All Files (*)"));
+
+  if (fileName.isEmpty()) {
+    return;
+  }
+
+  // Use JSONSerializer to save
+  JSONSerializer serializer;
+  if (!serializer.save(fsm, fileName)) {
+    QMessageBox::critical(this, tr("Export Failed"),
+                          tr("Failed to export FSM to JSON file."));
+    return;
+  }
+
+  statusBar()->showMessage(tr("Exported JSON to: %1").arg(fileName));
+
+  // Show success message
+  QMessageBox::information(this, tr("Export Complete"),
+                           tr("FSM has been exported to JSON "
+                              "successfully!\\n\\nFile: %1\\n\\nYou can "
+                              "now use this file to import the FSM later.")
+                               .arg(fileName));
 }
 
 void MainWindow::updateDiagramFromCode() {

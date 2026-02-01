@@ -8,7 +8,6 @@
 #include <QTextEdit>
 #include <QVBoxLayout>
 
-
 CodePreviewPanel::CodePreviewPanel(QWidget *parent)
     : QWidget(parent), m_isInternalUpdate(false) {
   QVBoxLayout *layout = new QVBoxLayout(this);
@@ -70,7 +69,7 @@ CodePreviewPanel::CodePreviewPanel(QWidget *parent)
 
   // Set monospace font
   QFont codeFont("Courier New");
-  codeFont.setPointSize(9);
+  codeFont.setPointSize(14); // Increased from 9 to 14
   m_codeEdit->setFont(codeFont);
 
   m_codeEdit->setPlaceholderText("");

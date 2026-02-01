@@ -67,12 +67,22 @@ set(CODEGEN_SOURCES
     src/codegen/CodeGenerator.cpp
     src/serialization/JSONSerializer.cpp
     src/parsing/CodeParser.cpp
+    src/parsing/Lexer.cpp
+    src/parsing/Token.cpp
+    src/parsing/CppParser.cpp
+    src/parsing/AST.cpp
+    src/parsing/ModelBuilder.cpp
 )
 
 set(CODEGEN_HEADERS
     src/codegen/CodeGenerator.h
     src/serialization/JSONSerializer.h
     src/parsing/CodeParser.h
+    src/parsing/Lexer.h
+    src/parsing/Token.h
+    src/parsing/CppParser.h
+    src/parsing/AST.h
+    src/parsing/ModelBuilder.h
 )
 
 set(SERIALIZATION_HEADERS
@@ -101,6 +111,30 @@ target_link_libraries(QtFSM PRIVATE
 target_include_directories(QtFSM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+# Stress Test - Parser verification
+add_executable(test_stress tests/test_stress.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+)
+target_link_libraries(test_stress PRIVATE Qt6::Core)
+target_include_directories(test_stress PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# User Code Test
+add_executable(test_user_code tests/test_user_code.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+)
+target_link_libraries(test_user_code PRIVATE Qt6::Core)
+target_include_directories(test_user_code PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# JSON Serialization Test
+add_executable(test_json tests/test_json.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+)
+target_link_libraries(test_json PRIVATE Qt6::Core)
+target_include_directories(test_json PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Installation
 install(TARGETS QtFSM

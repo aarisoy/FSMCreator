@@ -17,11 +17,19 @@ public:
 
   void setFSM(FSM *fsm);
 
+private slots:
+  void updateStates();
+  void updateTransitions();
+
 private:
   FSM *m_fsm = nullptr;
   class QLineEdit *m_nameEdit = nullptr;
   class QFormLayout *m_formLayout = nullptr;
   QWidget *m_fsmSettingsContainer = nullptr;
+
+  // Lists
+  class QTreeWidget *m_statesTree = nullptr;
+  class QTreeWidget *m_transitionsTree = nullptr;
 };
 
 #endif // PROPERTIESPANEL_H

@@ -83,11 +83,17 @@ void MainWindow::createActions() {
   m_newAction->setStatusTip(tr("Create a new FSM project"));
   connect(m_newAction, &QAction::triggered, this, &MainWindow::newProject);
 
-  // Open action
-  m_openAction = new QAction(tr("&Open..."), this);
-  m_openAction->setShortcuts(QKeySequence::Open);
-  m_openAction->setStatusTip(tr("Open an existing FSM project"));
-  connect(m_openAction, &QAction::triggered, this, &MainWindow::openProject);
+  // Import JSON action
+  m_importJsonAction = new QAction(tr("Import &JSON..."), this);
+  m_importJsonAction->setShortcuts(QKeySequence::Open);
+  m_importJsonAction->setStatusTip(tr("Import FSM from JSON file"));
+  connect(m_importJsonAction, &QAction::triggered, this,
+          &MainWindow::importJson);
+
+  // Import C++ action
+  m_importCppAction = new QAction(tr("Import C&++..."), this);
+  m_importCppAction->setStatusTip(tr("Import FSM from C++ code file"));
+  connect(m_importCppAction, &QAction::triggered, this, &MainWindow::importCpp);
 
   // Save action
   m_saveAction = new QAction(tr("&Save"), this);
@@ -149,7 +155,8 @@ void MainWindow::createMenus() {
   // File menu
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction(m_newAction);
-  fileMenu->addAction(m_openAction);
+  fileMenu->addAction(m_importJsonAction);
+  fileMenu->addAction(m_importCppAction);
   fileMenu->addAction(m_saveAction);
   fileMenu->addSeparator();
   fileMenu->addAction(m_exportAction);
@@ -177,7 +184,6 @@ void MainWindow::createToolBars() {
   fileToolBar->setIconSize(QSize(24, 24));
   fileToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   fileToolBar->addAction(m_newAction);
-  fileToolBar->addAction(m_openAction);
   fileToolBar->addAction(m_saveAction);
 
   addToolBarBreak();
@@ -277,10 +283,11 @@ void MainWindow::newProject() {
   statusBar()->showMessage(tr("New project created: %1").arg(fsmName));
 }
 
-void MainWindow::openProject() {
-  QString fileName =
-      QFileDialog::getOpenFileName(this, tr("Open FSM Project"), "",
-                                   tr("FSM Files (*.json);;All Files (*)"));
+void MainWindow::importJson() {
+  QString selectedFilter = tr("JSON Files (*.json)");
+  QString fileName = QFileDialog::getOpenFileName(
+      this, tr("Import FSM from JSON"), "",
+      tr("JSON Files (*.json);;All Files (*)"), &selectedFilter);
 
   if (fileName.isEmpty()) {
     return;
@@ -294,14 +301,54 @@ void MainWindow::openProject() {
     return;
   }
 
-  // TODO: Implement JSON deserialization properly
-  QMessageBox::information(
-      this, tr("Not Implemented"),
-      tr("JSON loading will be implemented in the next update.\n\nFor now, use "
-         "'New' to create a project and 'Export C++' to generate code."));
+  // Load JSON using JSONSerializer
+  JSONSerializer serializer;
+  FSM *loadedFsm = serializer.load(fileName);
+
+  if (!loadedFsm) {
+    QMessageBox::warning(this, tr("Error"),
+                         tr("Failed to load FSM from %1.").arg(fileName));
+    return;
+  }
+
+  // Set loaded FSM to the editor
+  m_diagramEditor->setFSM(loadedFsm);
+  m_propertiesPanel->setFSM(loadedFsm);
+
+  // Update ViewModel
+  m_viewModel->setFSM(loadedFsm);
 
   m_currentFile = fileName;
-  statusBar()->showMessage(tr("Loaded: %1").arg(fileName));
+  setWindowTitle(QString("QtFSM Designer - %1").arg(loadedFsm->name()));
+  statusBar()->showMessage(tr("Loaded: %1").arg(fileName), 3000);
+}
+
+void MainWindow::importCpp() {
+  QString fileName = QFileDialog::getOpenFileName(
+      this, tr("Import C++ Code"), "",
+      tr("C++ Files (*.cpp *.h *.hpp);;All Files (*)"));
+
+  if (fileName.isEmpty()) {
+    return;
+  }
+
+  QFile file(fileName);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    QMessageBox::warning(
+        this, tr("Error"),
+        tr("Cannot read file %1:\n%2.").arg(fileName).arg(file.errorString()));
+    return;
+  }
+
+  // Read the C++ code
+  QString cppCode = file.readAll();
+  file.close();
+
+  // Set the code in the code preview panel
+  m_codePreviewPanel->setCode(cppCode);
+
+  statusBar()->showMessage(
+      tr("C++ code loaded. Click 'Update Diagram' to parse."), 5000);
 }
 
 void MainWindow::saveProject() {
@@ -383,11 +430,18 @@ void MainWindow::exportJson() {
   }
 
   // Show file save dialog
+  QString selectedFilter = tr("JSON Files (*.json)");
   QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Export JSON"), "", tr("JSON Files (*.json);;All Files (*)"));
+      this, tr("Export JSON"), "", tr("JSON Files (*.json);;All Files (*)"),
+      &selectedFilter);
 
   if (fileName.isEmpty()) {
     return;
+  }
+
+  // Ensure .json extension
+  if (!fileName.endsWith(".json", Qt::CaseInsensitive)) {
+    fileName += ".json";
   }
 
   // Use JSONSerializer to save

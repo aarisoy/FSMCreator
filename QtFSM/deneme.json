@@ -1,0 +1,20 @@
+{
+    "name": "",
+    "states": [
+        {
+            "isInitial": true,
+            "name": "State1"
+        },
+        {
+            "isInitial": false,
+            "name": "State2"
+        }
+    ],
+    "transitions": [
+        {
+            "event": "",
+            "source": "State1",
+            "target": "State2"
+        }
+    ]
+}

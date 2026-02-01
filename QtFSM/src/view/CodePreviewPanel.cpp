@@ -124,3 +124,9 @@ QString CodePreviewPanel::code() const { return m_codeEdit->toPlainText(); }
 void CodePreviewPanel::setReadOnly(bool readOnly) {
   m_codeEdit->setReadOnly(readOnly);
 }
+
+void CodePreviewPanel::setCode(const QString &code) {
+  m_isInternalUpdate = true;
+  m_codeEdit->setPlainText(code);
+  m_isInternalUpdate = false;
+}

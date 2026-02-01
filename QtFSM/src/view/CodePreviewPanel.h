@@ -9,29 +9,29 @@ class FSM;
 /**
  * @brief The CodePreviewPanel class - Shows generated C++ code in real-time
  */
-class CodePreviewPanel : public QWidget
-{
-    Q_OBJECT
+class CodePreviewPanel : public QWidget {
+  Q_OBJECT
 
 public:
-    explicit CodePreviewPanel(QWidget *parent = nullptr);
-    ~CodePreviewPanel();
-    
-    QString code() const;
+  explicit CodePreviewPanel(QWidget *parent = nullptr);
+  ~CodePreviewPanel();
+
+  QString code() const;
 
 public slots:
-    void updateCode(FSM *fsm);
-    void clearCode();
-    void setReadOnly(bool readOnly);
+  void updateCode(FSM *fsm);
+  void clearCode();
+  void setReadOnly(bool readOnly);
+  void setCode(const QString &code);
 
 signals:
-    void codeChanged(const QString &code);
-    void updateDiagramRequested();
-    void generateCodeRequested();
+  void codeChanged(const QString &code);
+  void updateDiagramRequested();
+  void generateCodeRequested();
 
 private:
-    QTextEdit *m_codeEdit;
-    bool m_isInternalUpdate;
+  QTextEdit *m_codeEdit;
+  bool m_isInternalUpdate;
 };
 
 #endif // CODEPREVIEWPANEL_H

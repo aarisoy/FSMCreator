@@ -27,7 +27,8 @@ private:
 
 private slots:
   void newProject();
-  void openProject();
+  void importJson();
+  void importCpp();
   void saveProject();
   void exportCpp();
   void exportJson();
@@ -50,7 +51,8 @@ private:
 
   // Actions
   QAction *m_newAction;
-  QAction *m_openAction;
+  QAction *m_importJsonAction;
+  QAction *m_importCppAction;
   QAction *m_saveAction;
   QAction *m_exportAction;
   QAction *m_exportJsonAction;

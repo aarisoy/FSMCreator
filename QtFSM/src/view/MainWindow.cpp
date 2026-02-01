@@ -3,6 +3,7 @@
 #include "../model/FSM.h"
 #include "../parsing/CodeParser.h"
 #include "../serialization/JSONSerializer.h"
+#include "../viewmodel/DiagramViewModel.h"
 #include "CodePreviewPanel.h"
 #include "DiagramEditor.h"
 #include "PropertiesPanel.h"
@@ -24,8 +25,8 @@
 #include <QToolBar>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), m_diagramEditor(nullptr), m_propertiesPanel(nullptr),
-      m_darkTheme(false) {
+    : QMainWindow(parent), m_diagramEditor(nullptr), m_viewModel(nullptr),
+      m_propertiesPanel(nullptr), m_darkTheme(false) {
   setupUi();
   createActions();
   createMenus();
@@ -48,6 +49,14 @@ void MainWindow::setupUi() {
   // Create central diagram editor
   m_diagramEditor = new DiagramEditor(this);
   setCentralWidget(m_diagramEditor);
+
+  // Create ViewModel with FSM
+  m_viewModel = new DiagramViewModel(this);
+  FSM *fsm = new FSM(this);
+  m_viewModel->setFSM(fsm);
+
+  // Connect editor to ViewModel
+  m_diagramEditor->setViewModel(m_viewModel);
 
   // Connect diagram changes to code preview
   // Connect diagram changes to code preview
@@ -105,6 +114,26 @@ void MainWindow::createActions() {
   m_exitAction->setStatusTip(tr("Exit the application"));
   connect(m_exitAction, &QAction::triggered, this, &QWidget::close);
 
+  // Undo action
+  m_undoAction = new QAction(tr("&Undo"), this);
+  m_undoAction->setShortcuts(QKeySequence::Undo);
+  m_undoAction->setStatusTip(tr("Undo the last action"));
+  m_undoAction->setEnabled(false);
+  connect(m_undoAction, &QAction::triggered, m_viewModel,
+          &DiagramViewModel::undo);
+  connect(m_viewModel, &DiagramViewModel::undoRedoStateChanged, this,
+          [this]() { m_undoAction->setEnabled(m_viewModel->canUndo()); });
+
+  // Redo action
+  m_redoAction = new QAction(tr("&Redo"), this);
+  m_redoAction->setShortcuts(QKeySequence::Redo);
+  m_redoAction->setStatusTip(tr("Redo the last undone action"));
+  m_redoAction->setEnabled(false);
+  connect(m_redoAction, &QAction::triggered, m_viewModel,
+          &DiagramViewModel::redo);
+  connect(m_viewModel, &DiagramViewModel::undoRedoStateChanged, this,
+          [this]() { m_redoAction->setEnabled(m_viewModel->canRedo()); });
+
   // Toggle theme action
   m_toggleThemeAction = new QAction(tr("Dark Theme"), this);
   m_toggleThemeAction->setCheckable(true);
@@ -116,6 +145,7 @@ void MainWindow::createActions() {
 }
 
 void MainWindow::createMenus() {
+  // File menu
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction(m_newAction);
   fileMenu->addAction(m_openAction);
@@ -126,8 +156,10 @@ void MainWindow::createMenus() {
   fileMenu->addSeparator();
   fileMenu->addAction(m_exitAction);
 
+  // Edit menu
   QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
-  // TODO: Add edit actions
+  editMenu->addAction(m_undoAction);
+  editMenu->addAction(m_redoAction);
 
   QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
   viewMenu->addAction(m_toggleThemeAction);
@@ -179,6 +211,14 @@ void MainWindow::createToolBars() {
   connect(deleteAction, &QAction::triggered, m_diagramEditor,
           &DiagramEditor::deleteSelected);
   editToolBar->addAction(deleteAction);
+
+  editToolBar->addSeparator();
+
+  // Undo button
+  editToolBar->addAction(m_undoAction);
+
+  // Redo button
+  editToolBar->addAction(m_redoAction);
 }
 
 void MainWindow::createDockWidgets() {

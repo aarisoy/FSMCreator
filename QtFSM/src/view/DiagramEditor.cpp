@@ -2,6 +2,7 @@
 #include "../model/FSM.h"
 #include "../model/State.h"
 #include "../model/Transition.h"
+#include "../viewmodel/DiagramViewModel.h"
 #include "StateItem.h"
 #include "TransitionDialog.h"
 #include "TransitionItem.h"
@@ -13,8 +14,8 @@
 #include <QWheelEvent>
 
 DiagramEditor::DiagramEditor(QWidget *parent)
-    : QGraphicsView(parent), m_fsm(nullptr), m_welcomeText(nullptr),
-      m_titleItem(nullptr) {
+    : QGraphicsView(parent), m_viewModel(nullptr), m_fsm(nullptr),
+      m_welcomeText(nullptr), m_titleItem(nullptr) {
   m_scene = new QGraphicsScene(this);
   setScene(m_scene);
 
@@ -43,6 +44,8 @@ DiagramEditor::~DiagramEditor() {}
 
 // Helper to rebuild scene from FSM model
 void DiagramEditor::rebuildScene() {
+  qDebug() << "DiagramEditor::rebuildScene() called - FSM has"
+           << (m_fsm ? m_fsm->states().size() : 0) << "states";
   m_scene->clear();
   m_titleItem = nullptr;
   m_welcomeText = nullptr;
@@ -97,6 +100,24 @@ void DiagramEditor::setFSM(FSM *fsm) {
   }
 }
 
+void DiagramEditor::setViewModel(DiagramViewModel *viewModel) {
+  // Disconnect old ViewModel signals if any
+  if (m_viewModel) {
+    disconnect(m_viewModel, nullptr, this, nullptr);
+  }
+
+  m_viewModel = viewModel;
+  if (m_viewModel) {
+    setFSM(m_viewModel->fsm());
+
+    // Connect to modelChanged signal to rebuild scene on any change
+    connect(m_viewModel, &DiagramViewModel::modelChanged, this,
+            &DiagramEditor::rebuildScene);
+  }
+}
+
+DiagramViewModel *DiagramEditor::viewModel() const { return m_viewModel; }
+
 void DiagramEditor::updateTitle(const QString &name) {
   if (m_titleItem) {
     m_titleItem->setPlainText(name);
@@ -134,8 +155,6 @@ void DiagramEditor::addState() {
     i++;
   }
 
-  State *state = new State(stateName, stateName, m_fsm);
-
   // Position smart placement
   QRectF bounds;
   bool hasStates = false;
@@ -157,21 +176,24 @@ void DiagramEditor::addState() {
     newPos = QPointF(bounds.right() + 50, bounds.top());
   }
 
-  state->setPosition(newPos);
+  // Use ViewModel if available, otherwise fallback to direct FSM manipulation
+  if (m_viewModel) {
+    m_viewModel->addState(stateName, stateName, newPos);
+  } else {
+    // Legacy path: direct manipulation
+    State *state = new State(stateName, stateName, m_fsm);
+    state->setPosition(newPos);
 
-  // Set as initial if it's the first state
-  if (m_fsm->states().isEmpty()) {
-    state->setInitial(true);
-    m_fsm->setInitialState(state);
+    // Set as initial if it's the first state
+    if (m_fsm->states().isEmpty()) {
+      state->setInitial(true);
+      m_fsm->setInitialState(state);
+    }
+
+    m_fsm->addState(state);
   }
 
-  // Add to FSM model
-  m_fsm->addState(state);
-
-  // Create visual item
-  StateItem *stateItem = new StateItem(state);
-  m_scene->addItem(stateItem);
-
+  rebuildScene();
   emit fsmChanged();
 }
 
@@ -180,9 +202,16 @@ void DiagramEditor::deleteSelected() {
   for (QGraphicsItem *item : selected) {
     StateItem *stateItem = dynamic_cast<StateItem *>(item);
     if (stateItem && m_fsm) {
-      m_fsm->removeState(stateItem->state());
-      m_scene->removeItem(item);
-      delete item; // Delete item should be safe after removal
+      // Use ViewModel if available
+      if (m_viewModel) {
+        m_viewModel->deleteState(stateItem->state());
+        rebuildScene();
+      } else {
+        // Legacy path: direct manipulation
+        m_fsm->removeState(stateItem->state());
+        m_scene->removeItem(item);
+        delete item;
+      }
     } else {
       // For transitions or other items
       m_scene->removeItem(item);

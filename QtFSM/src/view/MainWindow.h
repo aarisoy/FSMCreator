@@ -6,6 +6,7 @@
 class DiagramEditor;
 class PropertiesPanel;
 class CodePreviewPanel;
+class DiagramViewModel;
 
 /**
  * @brief The MainWindow class - Main application window
@@ -40,6 +41,9 @@ private:
   // Central widget
   DiagramEditor *m_diagramEditor;
 
+  // ViewModel
+  DiagramViewModel *m_viewModel;
+
   // Dock widgets
   PropertiesPanel *m_propertiesPanel;
   CodePreviewPanel *m_codePreviewPanel;
@@ -51,6 +55,8 @@ private:
   QAction *m_exportAction;
   QAction *m_exportJsonAction;
   QAction *m_exitAction;
+  QAction *m_undoAction;
+  QAction *m_redoAction;
   QAction *m_toggleThemeAction;
 
   QString m_currentFile;

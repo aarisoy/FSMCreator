@@ -31,6 +31,7 @@ set(VIEWMODEL_SOURCES
     src/viewmodel/commands/AddStateCommand.cpp
     src/viewmodel/commands/DeleteStateCommand.cpp
     src/viewmodel/commands/AddTransitionCommand.cpp
+    src/viewmodel/commands/DeleteTransitionCommand.cpp
 )
 
 set(VIEWMODEL_HEADERS
@@ -39,6 +40,7 @@ set(VIEWMODEL_HEADERS
     src/viewmodel/commands/AddStateCommand.h
     src/viewmodel/commands/DeleteStateCommand.h
     src/viewmodel/commands/AddTransitionCommand.h
+    src/viewmodel/commands/DeleteTransitionCommand.h
 )
 
 set(VIEW_SOURCES

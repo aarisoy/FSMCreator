@@ -4,8 +4,8 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 
-
 class FSM;
+class DiagramViewModel;
 
 class DiagramEditor : public QGraphicsView {
   Q_OBJECT
@@ -14,6 +14,10 @@ public:
   explicit DiagramEditor(QWidget *parent = nullptr);
   ~DiagramEditor();
 
+  void setViewModel(DiagramViewModel *viewModel);
+  DiagramViewModel *viewModel() const;
+
+  // Legacy - for backward compatibility
   void setFSM(FSM *fsm);
   FSM *fsm() const;
 
@@ -32,7 +36,8 @@ protected:
 
 private:
   QGraphicsScene *m_scene;
-  FSM *m_fsm;
+  DiagramViewModel *m_viewModel;
+  FSM *m_fsm; // Direct access - will be phased out
   QGraphicsTextItem *m_welcomeText;
   QGraphicsTextItem *m_titleItem;
 

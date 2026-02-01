@@ -1,16 +1,15 @@
-#include "src/model/FSM.h"
-#include "src/parsing/CppParser.h"
-#include "src/parsing/Lexer.h"
-#include "src/parsing/ModelBuilder.h"
-#include <QCoreApplication>
-#include <QDebug>
-
+#include "../src/model/FSM.h"
+#include "../src/parsing/CppParser.h"
+#include "../src/parsing/Lexer.h"
+#include "../src/parsing/ModelBuilder.h"
+#include <QString>
+#include <QVector>
+#include <gtest/gtest.h>
 
 using namespace FSMParser;
 
-int main(int argc, char *argv[]) {
-  QCoreApplication app(argc, argv);
-
+// GTest for Parser Debugging and Low-Level Validation
+TEST(ParserDebugTest, TokenizesAndParses BasicCode) {
   QString testCode = R"(
 class MyFSMStateBase {
 public:
@@ -28,39 +27,50 @@ public:
 };
 )";
 
-  qDebug() << "=== Testing Parser ===\n";
-
   // Step 1: Tokenize
   Lexer lexer(testCode);
   QVector<Token> tokens = lexer.tokenize();
 
-  qDebug() << "Tokens around 'MyFSMStateBase':";
-  int count = 0;
+  ASSERT_GT(tokens.size(), 0) << "Lexer should produce tokens";
+
+  // Verify we get EOF at the end
+  bool hasEOF = false;
   for (const Token &token : tokens) {
-    if (token.type == TokenType::EndOfFile)
+    if (token.type == TokenType::EndOfFile) {
+      hasEOF = true;
       break;
-    qDebug().nospace() << "[" << count++ << "] Line " << token.line << ": "
-                       << token.typeName().leftJustified(15) << " = '"
-                       << token.value << "'";
-    if (count > 20)
-      break;
+    }
   }
+  EXPECT_TRUE(hasEOF) << "Token stream should end with EOF";
 
   // Step 2: Parse
-  qDebug() << "\n=== Parsing ===";
   CppParser parser(tokens);
   QVector<ClassDecl *> classes = parser.parse();
 
-  if (parser.hasError()) {
-    qDebug() << "❌ Parser error:" << parser.errorMessage();
-  } else {
-    qDebug() << "✅ Parsed" << classes.size() << "classes";
-    for (ClassDecl *cls : classes) {
-      qDebug() << "  Class:" << cls->name << "(" << cls->methods.size()
-               << "methods)";
+  EXPECT_FALSE(parser.hasError()) << "Parser should not have errors. Error: "
+                                  << parser.errorMessage().toStdString();
+
+  ASSERT_EQ(classes.size(), 2) << "Should parse 2 classes";
+
+  // Verify class names
+  bool hasBase = false;
+  bool hasState1 = false;
+  for (ClassDecl *cls : classes) {
+    if (cls->name == "MyFSMStateBase")
+      hasBase = true;
+    if (cls->name == "State1State")
+      hasState1 = true;
+  }
+
+  EXPECT_TRUE(hasBase) << "Should parse MyFSMStateBase";
+  EXPECT_TRUE(hasState1) << "Should parse State1State";
+
+  // Find State1State and verify it has methods
+  for (ClassDecl *cls : classes) {
+    if (cls->name == "State1State") {
+      EXPECT_GT(cls->methods.size(), 0) << "State1State should have methods";
     }
   }
 
   qDeleteAll(classes);
-  return 0;
 }

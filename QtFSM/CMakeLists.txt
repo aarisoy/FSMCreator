@@ -10,6 +10,17 @@ set(CMAKE_AUTOUIC ON)
 # Find Qt6 packages
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
+# Add Google Test
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
 # Project source files
 set(MODEL_SOURCES
     src/model/FSM.cpp
@@ -52,6 +63,7 @@ set(VIEW_SOURCES
     src/view/StateDialog.cpp
     src/view/CodePreviewPanel.cpp
     src/view/TransitionDialog.cpp
+    src/view/AboutDialog.cpp
 )
 
 set(VIEW_HEADERS
@@ -63,6 +75,7 @@ set(VIEW_HEADERS
     src/view/StateDialog.h
     src/view/CodePreviewPanel.h
     src/view/TransitionDialog.h
+    src/view/AboutDialog.h
 )
 
 set(CODEGEN_SOURCES
@@ -114,29 +127,60 @@ target_include_directories(QtFSM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# Stress Test - Parser verification
+# Test executable: Stress Test
 add_executable(test_stress tests/test_stress.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
 )
-target_link_libraries(test_stress PRIVATE Qt6::Core)
+target_link_libraries(test_stress PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_stress PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # User Code Test
 add_executable(test_user_code tests/test_user_code.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
 )
-target_link_libraries(test_user_code PRIVATE Qt6::Core)
+target_link_libraries(test_user_code PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_user_code PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # JSON Serialization Test
 add_executable(test_json tests/test_json.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
+)
+target_link_libraries(test_json PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_json PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Lexer Test
+add_executable(test_lexer tests/test_lexer.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
 )
-target_link_libraries(test_json PRIVATE Qt6::Core)
-target_include_directories(test_json PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(test_lexer PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_lexer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Parser Test
+add_executable(test_parser tests/test_parser.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+)
+target_link_libraries(test_parser PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Parser Debug Test
+add_executable(test_debug_parser tests/test_debug_parser.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+)
+target_link_libraries(test_debug_parser PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_debug_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Installation
 install(TARGETS QtFSM

@@ -1,14 +1,11 @@
 #include "../src/model/FSM.h"
-#include "../src/model/State.h"
-#include "../src/model/Transition.h"
 #include "../src/parsing/CodeParser.h"
-#include <QDebug>
 #include <QString>
+#include <gtest/gtest.h>
 
-// Note: FSM, State, Transition, CodeParser are in global namespace
-// internal parser classes (Lexer, Parser, AST) are in FSMParser namespace
 
-void runStressTest() {
+// GTest for FSM Parser Stress Test
+TEST(FSMParserStressTest, HandlesComplexCode) {
   QString trickyCode = R"(
     #include <string>
     
@@ -51,56 +48,98 @@ void runStressTest() {
             }
             */
             
-            // Transition 3: String literal with quotes
-            if (evt.type == "Quote\"Event") {
+            // Transition 3: Normal transition
+            if (evt.type == "GoToTwo") {
                 return new TargetTwoState();
+            }
+            
+            // Transition 4: No space before parenthesis
+            if(evt.type=="Compact"){
+                return new CompactState();
+            }
+            
+            // Edge case: Transition inside nested braces
+            {
+                if (evt.type == "Nested") {
+                    return new NestedTargetState();
+                }
             }
             
             return nullptr;
         }
-        
-        std::string getName() const override { return "WeirdFormat"; }
-    };
-
-    // 4. Another valid state to be the target
-    class TargetOneState : public MyFSMStateBase { 
-        MyFSMStateBase* handle(MyFSMContext* c, const Event& e) override { return nullptr; }
-        std::string getName() const override { return "Target1"; }
     };
     
-    class TargetTwoState : public MyFSMStateBase {
-        MyFSMStateBase* handle(MyFSMContext* c, const Event& e) override { return nullptr; }
-        std::string getName() const override { return "Target2"; }
+    // 4. State with no transitions
+    class   NoTransitionsState  :  public MyFSMStateBase {
+    public:
+        MyFSMStateBase* handle(MyFSMContext* ctx, const Event& evt) override {
+            // No transitions
+            return nullptr;
+        }
     };
     )";
 
-  qDebug() << "=== Starting Stress Test ===";
-
+  // Parse the code
   CodeParser parser;
   FSM *fsm = parser.parse(trickyCode);
 
-  if (fsm) {
-    qDebug() << "Parsed Successfully!";
-    qDebug() << "State Count:" << fsm->states().size();
+  // Validate FSM
+  ASSERT_NE(fsm, nullptr) << "FSM should be created from tricky code";
 
-    // QList iteration
-    foreach (State *s, fsm->states()) {
-      if (!s)
-        continue;
-      qDebug() << "State:" << s->name();
-      foreach (Transition *t, s->transitions()) {
-        if (!t)
-          continue;
-        qDebug() << "  Transition:" << t->event() << "->"
-                 << (t->targetState() ? t->targetState()->name() : "NULL");
-      }
+  // Should detect 2 States (WeirdFormatState, NoTransitionsState)
+  // StateMachineConfig should be skipped
+  EXPECT_EQ(fsm->states().size(), 2) << "Should have exactly 2 states";
+
+  // Find WeirdFormatState
+  State *weirdState = nullptr;
+  for (auto state : fsm->states()) {
+    if (state->name() == "WeirdFormatState") {
+      weirdState = state;
+      break;
     }
-  } else {
-    qDebug() << "Parsing Failed:" << parser.lastError();
   }
-}
 
-int main() {
-  runStressTest();
-  return 0;
+  ASSERT_NE(weirdState, nullptr) << "WeirdFormatState should be found";
+
+  // WeirdFormatState should have 4 transitions (non-commented ones)
+  EXPECT_EQ(weirdState->transitions().size(), 4)
+      << "WeirdFormatState should have 4 transitions";
+
+  // Verify transition targets
+  bool hasTargetOne = false;
+  bool hasTargetTwo = false;
+  bool hasCompact = false;
+  bool hasNested = false;
+
+  for (auto trans : weirdState->transitions()) {
+    if (trans->targetState()->name() == "TargetOneState") {
+      hasTargetOne = true;
+    } else if (trans->targetState()->name() == "TargetTwoState") {
+      hasTargetTwo = true;
+    } else if (trans->targetState()->name() == "CompactState") {
+      hasCompact = true;
+    } else if (trans->targetState()->name() == "NestedTargetState") {
+      hasNested = true;
+    }
+  }
+
+  EXPECT_TRUE(hasTargetOne) << "Should have transition to TargetOneState";
+  EXPECT_TRUE(hasTargetTwo) << "Should have transition to TargetTwoState";
+  EXPECT_TRUE(hasCompact) << "Should have transition to CompactState";
+  EXPECT_TRUE(hasNested) << "Should have transition to NestedTargetState";
+
+  // Check NoTransitionsState
+  State *noTransState = nullptr;
+  for (auto state : fsm->states()) {
+    if (state->name() == "NoTransitionsState") {
+      noTransState = state;
+      break;
+    }
+  }
+
+  ASSERT_NE(noTransState, nullptr) << "NoTransitionsState should be found";
+  EXPECT_EQ(noTransState->transitions().size(), 0)
+      << "NoTransitionsState should have no transitions";
+
+  delete fsm;
 }

@@ -35,6 +35,7 @@ private slots:
   void toggleTheme();
   void updateCodePreview();
   void updateDiagramFromCode();
+  void showAbout();
 
 private:
   void applyTheme();
@@ -60,6 +61,7 @@ private:
   QAction *m_undoAction;
   QAction *m_redoAction;
   QAction *m_toggleThemeAction;
+  QAction *m_aboutAction;
 
   QString m_currentFile;
   bool m_darkTheme;

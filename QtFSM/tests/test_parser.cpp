@@ -1,14 +1,15 @@
-#include "src/model/FSM.h"
-#include "src/model/State.h"
-#include "src/model/Transition.h"
-#include "src/parsing/CodeParser.h"
-#include <QCoreApplication>
-#include <QDebug>
+#include "../src/model/FSM.h"
+#include "../src/model/State.h"
+#include "../src/model/Transition.h"
+#include "../src/parsing/CodeParser.h"
+#include <QSet>
+#include <QString>
+#include <QVector>
+#include <gtest/gtest.h>
 
 
-int main(int argc, char *argv[]) {
-  QCoreApplication app(argc, argv);
-
+// GTest for Full Parser Functionality
+TEST(CodeParserTest, ParsesCompleteStateMachine) {
   // Test code sample - similar to what the code generator produces
   QString testCode = R"(
 #include <memory>
@@ -63,28 +64,24 @@ public:
 };
 )";
 
-  qDebug() << "========================================";
-  qDebug() << "Testing Code Parser";
-  qDebug() << "========================================\n";
-
   // Parse the code
   CodeParser parser;
   FSM *fsm = parser.parse(testCode);
 
-  if (!fsm) {
-    qDebug() << "❌ FAILED: Parser returned nullptr";
-    qDebug() << "Error:" << parser.lastError();
-    return 1;
-  }
+  ASSERT_NE(fsm, nullptr) << "Parser should successfully parse the code";
 
-  qDebug() << "✅ Parser succeeded!";
-  qDebug() << "\n--- States Found ---";
+  // Verify we have 3 states
+  ASSERT_EQ(fsm->states().size(), 3) << "Should parse 3 states";
+
+  // Verify state names
+  QSet<QString> stateNames;
   for (State *state : fsm->states()) {
-    qDebug() << "  •" << state->name();
+    stateNames.insert(state->name());
   }
 
-  qDebug() << "\n--- Transitions Found ---";
-  bool allPassed = true;
+  EXPECT_TRUE(stateNames.contains("State1")) << "Should have State1";
+  EXPECT_TRUE(stateNames.contains("State2")) << "Should have State2";
+  EXPECT_TRUE(stateNames.contains("Error")) << "Should have Error state";
 
   // Expected transitions
   struct ExpectedTransition {
@@ -97,41 +94,7 @@ public:
                                           {"State1", "Error", "ErrorOccurred"},
                                           {"State2", "State1", "BackPressed"}};
 
-  // Check all states
-  for (State *state : fsm->states()) {
-    qDebug() << "\n  From" << state->name() << ":";
-    for (Transition *t : state->transitions()) {
-      QString source = t->sourceState()->name();
-      QString target = t->targetState()->name();
-      QString event = t->event();
-
-      qDebug() << "    ->" << target << "[" << event << "]";
-
-      // Verify this matches expected
-      bool found = false;
-      for (const auto &exp : expected) {
-        if (exp.source == source && exp.target == target &&
-            exp.event == event) {
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
-        qDebug() << "      ❌ UNEXPECTED transition!";
-        allPassed = false;
-      } else {
-        qDebug() << "      ✅ Correct";
-      }
-    }
-
-    if (state->transitions().isEmpty()) {
-      qDebug() << "    (no transitions)";
-    }
-  }
-
-  // Check if we found all expected
-  qDebug() << "\n--- Verification ---";
+  // Verify all expected transitions exist
   for (const auto &exp : expected) {
     bool found = false;
     for (State *state : fsm->states()) {
@@ -143,28 +106,14 @@ public:
           break;
         }
       }
+      if (found)
+        break;
     }
 
-    if (found) {
-      qDebug() << "✅ Found:" << exp.source << "->" << exp.target << "["
-               << exp.event << "]";
-    } else {
-      qDebug() << "❌ MISSING:" << exp.source << "->" << exp.target << "["
-               << exp.event << "]";
-      allPassed = false;
-    }
+    EXPECT_TRUE(found) << "Should have transition: " << exp.source.toStdString()
+                       << " -> " << exp.target.toStdString() << " ["
+                       << exp.event.toStdString() << "]";
   }
 
-  qDebug() << "\n========================================";
-  if (allPassed) {
-    qDebug() << "✅ ALL TESTS PASSED!";
-    qDebug() << "========================================";
-    delete fsm;
-    return 0;
-  } else {
-    qDebug() << "❌ SOME TESTS FAILED";
-    qDebug() << "========================================";
-    delete fsm;
-    return 1;
-  }
+  delete fsm;
 }

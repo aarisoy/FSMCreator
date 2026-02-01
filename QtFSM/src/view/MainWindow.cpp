@@ -4,6 +4,7 @@
 #include "../parsing/CodeParser.h"
 #include "../serialization/JSONSerializer.h"
 #include "../viewmodel/DiagramViewModel.h"
+#include "AboutDialog.h"
 #include "CodePreviewPanel.h"
 #include "DiagramEditor.h"
 #include "PropertiesPanel.h"
@@ -23,6 +24,7 @@
 #include <QStyle>
 #include <QTextStream>
 #include <QToolBar>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_diagramEditor(nullptr), m_viewModel(nullptr),
@@ -149,6 +151,11 @@ void MainWindow::createActions() {
   m_toggleThemeAction->setStatusTip(tr("Toggle between light and dark theme"));
   connect(m_toggleThemeAction, &QAction::triggered, this,
           &MainWindow::toggleTheme);
+
+  // About action
+  m_aboutAction = new QAction(tr("About QtFSM"), this);
+  m_aboutAction->setStatusTip(tr("About this application"));
+  connect(m_aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 }
 
 void MainWindow::createMenus() {
@@ -176,7 +183,7 @@ void MainWindow::createMenus() {
   // TODO: Add tools actions
 
   QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-  // TODO: Add help actions
+  helpMenu->addAction(m_aboutAction);
 }
 
 void MainWindow::createToolBars() {
@@ -731,4 +738,9 @@ void MainWindow::applyTheme() {
     // Update diagram editor background for light theme
     m_diagramEditor->setBackgroundBrush(QBrush(QColor(250, 250, 250)));
   }
+}
+
+void MainWindow::showAbout() {
+  AboutDialog dialog(this);
+  dialog.exec();
 }

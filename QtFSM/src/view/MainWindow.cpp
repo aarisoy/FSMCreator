@@ -66,6 +66,7 @@ void MainWindow::setupUi() {
 
   // Create properties panel
   m_propertiesPanel = new PropertiesPanel(this);
+  m_propertiesPanel->setFSM(fsm); // Connect to initial FSM
 
   // Create code preview panel
   m_codePreviewPanel = new CodePreviewPanel(this);

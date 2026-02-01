@@ -67,7 +67,8 @@ PropertiesPanel::PropertiesPanel(QWidget *parent) : QWidget(parent) {
 
   m_statesTree = new QTreeWidget(m_fsmSettingsContainer);
   m_statesTree->setHeaderHidden(true);
-  m_statesTree->setMaximumHeight(120);
+  m_statesTree->setMinimumHeight(60);
+  m_statesTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
   m_statesTree->setStyleSheet(
       "QTreeWidget { background-color: #f9f9f9; border: 1px solid #ddd; }");
   fsmVLayout->addWidget(m_statesTree);
@@ -81,7 +82,9 @@ PropertiesPanel::PropertiesPanel(QWidget *parent) : QWidget(parent) {
 
   m_transitionsTree = new QTreeWidget(m_fsmSettingsContainer);
   m_transitionsTree->setHeaderHidden(true);
-  m_transitionsTree->setMaximumHeight(120);
+  m_transitionsTree->setMinimumHeight(60);
+  m_transitionsTree->setSizePolicy(QSizePolicy::Expanding,
+                                   QSizePolicy::Minimum);
   m_transitionsTree->setStyleSheet(
       "QTreeWidget { background-color: #f9f9f9; border: 1px solid #ddd; }");
   fsmVLayout->addWidget(m_transitionsTree);

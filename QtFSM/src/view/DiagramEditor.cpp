@@ -38,6 +38,9 @@ DiagramEditor::DiagramEditor(QWidget *parent)
 
   // Enable mouse tracking
   setMouseTracking(true);
+
+  // Set size policy to expand with window
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
 DiagramEditor::~DiagramEditor() {}
@@ -241,6 +244,7 @@ void DiagramEditor::startTransitionMode() {
         transition->setEvent(eventName);
       }
       source->addTransition(transition);
+      m_fsm->addTransition(transition); // Register with FSM to emit signal
 
       // Create Visual
       StateItem *sourceItem = nullptr;

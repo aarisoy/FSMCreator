@@ -39,10 +39,9 @@ void DeleteStateCommand::redo() {
   }
   for (Transition *trans : transitionsToRemove) {
     m_fsm->removeTransition(trans);
-    delete trans;
   }
 
-  m_fsm->removeState(m_state);
+  m_fsm->removeStateWithoutDelete(m_state);
   if (m_wasInitial) {
     m_fsm->setInitialState(nullptr);
   }

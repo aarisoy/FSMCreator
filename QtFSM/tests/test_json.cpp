@@ -10,7 +10,7 @@
 // GTest for JSON Serialization
 TEST(JSONSerializationTest, SaveAndLoadFSM) {
   // Read the input C++ file
-  QFile inputFile("tests/test_input.cpp");
+  QFile inputFile("../tests/test_input.cpp");
   ASSERT_TRUE(inputFile.open(QIODevice::ReadOnly | QIODevice::Text))
       << "Should be able to open test_input.cpp";
 

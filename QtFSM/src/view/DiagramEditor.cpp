@@ -201,25 +201,57 @@ void DiagramEditor::addState() {
 }
 
 void DiagramEditor::deleteSelected() {
+  if (!m_fsm)
+    return;
+
+  // 1. Collect Model objects to delete preventing dangling pointers after scene
+  // clear
   QList<QGraphicsItem *> selected = m_scene->selectedItems();
+  QList<State *> statesToDelete;
+  QList<Transition *> transitionsToDelete;
+
   for (QGraphicsItem *item : selected) {
-    StateItem *stateItem = dynamic_cast<StateItem *>(item);
-    if (stateItem && m_fsm) {
-      // Use ViewModel if available
-      if (m_viewModel) {
-        m_viewModel->deleteState(stateItem->state());
-        rebuildScene();
-      } else {
-        // Legacy path: direct manipulation
-        m_fsm->removeState(stateItem->state());
-        m_scene->removeItem(item);
-        delete item;
-      }
-    } else {
-      // For transitions or other items
-      m_scene->removeItem(item);
-      delete item;
+    if (StateItem *si = dynamic_cast<StateItem *>(item)) {
+      statesToDelete.append(si->state());
+    } else if (TransitionItem *ti = dynamic_cast<TransitionItem *>(item)) {
+      transitionsToDelete.append(ti->transition());
     }
+  }
+
+  // 2. Delete States
+  for (State *state : statesToDelete) {
+    // Check validity (in case it was already deleted, though unlikely in this
+    // loop)
+    if (m_fsm->states().contains(state)) {
+      if (m_viewModel) {
+        m_viewModel->deleteState(state);
+      } else {
+        m_fsm->removeState(state);
+      }
+    }
+  }
+
+  // 3. Delete Transitions
+  for (Transition *transition : transitionsToDelete) {
+    // Check validity (crucial: deleting a state might have already deleted this
+    // transition)
+    if (m_fsm->transitions().contains(transition)) {
+      if (m_viewModel) {
+        m_viewModel->deleteTransition(transition);
+      } else {
+        m_fsm->removeTransition(transition);
+      }
+    }
+  }
+
+  // If we didn't use ViewModel (legacy path), we might need to manually ensure
+  // cleanup/rebuild
+  if (!m_viewModel) {
+    // Just ensure scene is clean for non-VM path
+    // Note: removeState/removeTransition usually trigger modified() -> signals?
+    // In this class setFSM connects FSM::nameChanged only.
+    // But we probably want rebuildScene if we did manual changes.
+    rebuildScene();
   }
 }
 

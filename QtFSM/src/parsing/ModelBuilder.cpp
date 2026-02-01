@@ -53,16 +53,43 @@ void ModelBuilder::visitFunctionDecl(FunctionDecl *node) {
   // Debug log
   qDebug() << "ModelBuilder: Visiting function" << node->name;
 
-  // Only interested in handle() methods
-  if (node->name != "handle") {
-    return;
-  }
-
-  // Visit function body to find transitions
-  for (Statement *stmt : node->body) {
-    if (stmt) {
-      stmt->accept(this);
+  // Reconstruct signature
+  QString signature = node->returnType + " " + node->name + "(";
+  for (int i = 0; i < node->parameters.size(); ++i) {
+    if (i > 0)
+      signature += ", ";
+    signature += node->parameters[i].type;
+    if (!node->parameters[i].name.isEmpty()) {
+      signature += " " + node->parameters[i].name;
     }
+  }
+  signature += ")";
+  if (node->isOverride)
+    signature += " override";
+
+  // Only proceed if we are currently visiting a State class
+  if (!m_currentState)
+    return;
+
+  if (node->name == "handle") {
+    // Visit function body to find transitions (existing logic)
+    for (Statement *stmt : node->body) {
+      if (stmt) {
+        stmt->accept(this);
+      }
+    }
+  } else if (node->name == "enter") {
+    // Assuming body contains the action code
+    // meaningful code extraction is hard without more AST support for printing,
+    // but we can at least mark it or store the signature?
+    // For now, let's store the signature as the action, or leave empty to
+    // indicate existence.
+    m_currentState->setEntryAction(signature);
+  } else if (node->name == "exit") {
+    m_currentState->setExitAction(signature);
+  } else {
+    // Custom Function logic
+    m_currentState->addFunction(signature);
   }
 }
 
@@ -89,6 +116,16 @@ void ModelBuilder::visitIfStatement(IfStatement *node) {
       if (!m_currentTargetState.isEmpty() && m_currentState) {
         State *targetState = m_stateMap.value(m_currentTargetState);
 
+        if (!targetState) {
+          // Lazy creation of target state
+          QString stateName = extractStateName(m_currentTargetState);
+          targetState = new State(stateName, stateName, m_fsm);
+          m_fsm->addState(targetState);
+          m_stateMap.insert(m_currentTargetState, targetState);
+          qDebug() << "ModelBuilder: Lazily created state" << stateName
+                   << "from" << m_currentTargetState;
+        }
+
         if (targetState) {
           // Check if transition already exists
           bool exists = false;
@@ -108,10 +145,6 @@ void ModelBuilder::visitIfStatement(IfStatement *node) {
             qDebug() << "ModelBuilder: Added transition" << eventName << "->"
                      << targetState->name();
           }
-        } else {
-          // Try to look up by Name (without "State" suffix)?
-          // Or maybe map has different key?
-          qDebug() << "ModelBuilder: Target state not found in map!";
         }
       }
     }

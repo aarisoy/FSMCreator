@@ -40,6 +40,12 @@ public:
   void updatePosition();
 
   /**
+   * @brief Gets the underlying Transition model object.
+   * @return Pointer to the Transition.
+   */
+  Transition *transition() const { return m_transition; }
+
+  /**
    * @brief Returns the bounding rectangle for this connection.
    * Includes the arrow path and any decorations (arrowhead).
    * @return QRectF defining the paintable area.

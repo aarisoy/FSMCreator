@@ -172,6 +172,28 @@ public:
    */
   void removeTransition(Transition *transition);
 
+  // =========================================================================
+  // Custom Functionalities
+  // =========================================================================
+
+  /**
+   * @brief Retrieves a list of custom member functions defined in this state.
+   * @return List of function signatures (e.g. "void calculate(int x)").
+   */
+  QList<QString> customFunctions() const;
+
+  /**
+   * @brief Adds a custom function to this state.
+   * @param functionSignature The full function signature.
+   */
+  void addFunction(const QString &functionSignature);
+
+  /**
+   * @brief Removes a custom function from this state.
+   * @param functionSignature The function signature to remove.
+   */
+  void removeFunction(const QString &functionSignature);
+
 signals:
   void idChanged(const QString &id);
   void nameChanged(const QString &name);
@@ -190,6 +212,11 @@ private:
   bool m_isInitial;
   bool m_isFinal;
   QList<Transition *> m_transitions;
+  QList<QString> m_customFunctions;
+
+signals:
+  void customFunctionAdded(const QString &function);
+  void customFunctionRemoved(const QString &function);
 };
 
 #endif // STATE_H

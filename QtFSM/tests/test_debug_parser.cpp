@@ -9,7 +9,7 @@
 using namespace FSMParser;
 
 // GTest for Parser Debugging and Low-Level Validation
-TEST(ParserDebugTest, TokenizesAndParses BasicCode) {
+TEST(ParserDebugTest, TokenizesAndParsesBasicCode) {
   QString testCode = R"(
 class MyFSMStateBase {
 public:
@@ -71,6 +71,70 @@ public:
       EXPECT_GT(cls->methods.size(), 0) << "State1State should have methods";
     }
   }
+
+  qDeleteAll(classes);
+}
+
+TEST(ParserDebugTest, VerifyFunctionParsing) {
+  QString testCode = R"(
+    class ParamState : public State {
+    public:
+        void handle() {
+            if (event == "Trigger") {
+                return new TargetState();
+            }
+        }
+        void customFunc(int x, float y) {
+            // custom logic
+        }
+    };
+  )";
+
+  // Tokenize & Parse
+  Lexer lexer(testCode);
+  QVector<Token> tokens = lexer.tokenize();
+  CppParser parser(tokens);
+  QVector<ClassDecl *> classes = parser.parse();
+
+  EXPECT_FALSE(parser.hasError())
+      << "Parser error: " << parser.errorMessage().toStdString();
+  ASSERT_EQ(classes.size(), 1);
+
+  ClassDecl *cls = classes[0];
+  EXPECT_EQ(cls->name, "ParamState");
+  EXPECT_EQ(cls->methods.size(), 2);
+
+  // Check methods
+  bool foundHandle = false;
+  bool foundCustom = false;
+  for (FunctionDecl *func : cls->methods) {
+    if (func->name == "handle")
+      foundHandle = true;
+    if (func->name == "customFunc") {
+      foundCustom = true;
+      ASSERT_EQ(func->parameters.size(), 2);
+      EXPECT_EQ(func->parameters[0].type, "int");
+      EXPECT_EQ(func->parameters[0].name, "x");
+      EXPECT_EQ(func->parameters[1].type, "float");
+      EXPECT_EQ(func->parameters[1].name, "y");
+    }
+  }
+  EXPECT_TRUE(foundHandle);
+  EXPECT_TRUE(foundCustom);
+
+  // Test Model Building
+  FSM fsm;
+  ModelBuilder builder(&fsm);
+  builder.build(classes);
+
+  State *state = fsm.stateById("Param"); // "ParamState" -> "Param"
+  ASSERT_NE(state, nullptr);
+
+  // Verify custom function in model
+  QList<QString> funcs = state->customFunctions();
+  ASSERT_EQ(funcs.size(), 1);
+  // Reconstructed signature: "void customFunc(int x, float y)"
+  EXPECT_EQ(funcs[0], "void customFunc(int x, float y)");
 
   qDeleteAll(classes);
 }

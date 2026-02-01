@@ -115,7 +115,8 @@ ClassDecl *CppParser::parseClass() {
   // Check if this is an FSM state class - only parse those in detail
   bool isFSMState =
       (classDecl->baseClass == "MyFSMStateBase" ||
-       classDecl->baseClass == "State" ||
+       classDecl->baseClass == "State" || classDecl->name == "MyFSMStateBase" ||
+       classDecl->name.endsWith("StateBase") ||
        (classDecl->name.endsWith("State") && classDecl->name != "BaseState"));
 
   if (!isFSMState) {
@@ -264,9 +265,46 @@ FunctionDecl *CppParser::parseFunction() {
   // (
   consume(TokenType::LeftParen, "Expected '(' after function name");
 
-  // Parameters - simplified, just skip until )
+  // Parameters
   while (!check(TokenType::RightParen) && !isAtEnd()) {
-    advance();
+    QString typeStr;
+    QString nameStr;
+
+    // Capture type tokens until we hit the name (last identifier before comma
+    // or closure) This is a naive heuristic: assume last identifier is name,
+    // previous are type. Better heuristic: Read tokens until ',' or ')'. The
+    // last token is the name. Everything before is type. If there is only one
+    // token, it might be just type (unnamed param) or just name (implicit int?
+    // no). Let's rely on standard "Type Name" or "Type" patterns.
+
+    QVector<Token> paramTokens;
+    while (!check(TokenType::Comma) && !check(TokenType::RightParen) &&
+           !isAtEnd()) {
+      paramTokens.append(advance());
+    }
+
+    if (!paramTokens.isEmpty()) {
+      Parameter param;
+      if (paramTokens.size() == 1) {
+        // Just one token, assume it's the type (unnamed parameter) or we treat
+        // it as type
+        param.type = paramTokens[0].value;
+        // Name remains empty
+      } else {
+        // Assume last token is name, rest is type
+        param.name = paramTokens.last().value;
+        for (int i = 0; i < paramTokens.size() - 1; ++i) {
+          if (i > 0)
+            param.type += " ";
+          param.type += paramTokens[i].value;
+        }
+      }
+      func->parameters.append(param);
+    }
+
+    if (match(TokenType::Comma)) {
+      continue;
+    }
   }
 
   // )

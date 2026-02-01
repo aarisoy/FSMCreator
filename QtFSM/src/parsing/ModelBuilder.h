@@ -9,11 +9,27 @@
 
 namespace FSMParser {
 
+/**
+ * @brief The ModelBuilder class traverses the AST to construct the FSM Model.
+ *
+ * It is an AST Visitor that interprets the parsed C++ structures (Classes,
+ * Functions) and translates them into @ref State and @ref Transition objects in
+ * the @ref FSM.
+ *
+ * @ingroup Parsing
+ */
 class ModelBuilder : public ASTVisitor {
 public:
+  /**
+   * @brief Constructs a new ModelBuilder.
+   * @param fsm The target FSM to populate.
+   */
   explicit ModelBuilder(FSM *fsm);
 
-  // Build model from AST
+  /**
+   * @brief Builds the model from a list of class declarations.
+   * @param classes The vector of parsed ClassNodes.
+   */
   void build(const QVector<ClassDecl *> &classes);
 
   // Visitor methods

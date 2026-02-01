@@ -5,26 +5,54 @@
 #include <QString>
 #include <QVector>
 
-
 namespace FSMParser {
 
+/**
+ * @brief The Lexer class performs lexical analysis (tokenization).
+ *
+ * It reads the raw C++ source string and breaks it down into meaningful units
+ * called Tokens. It handles C++ identifiers, keywords, striung literals, and
+ * various operators/symbols.
+ *
+ * @ingroup Parsing
+ */
 class Lexer {
 public:
+  /**
+   * @brief Constructs a Lexer for the given source code.
+   * @param source The C++ source code string.
+   */
   Lexer(const QString &source);
 
-  // Tokenize entire source
+  /**
+   * @brief Tokenizes the entire source code at once.
+   * @return A vector containing all tokens found in the source.
+   */
   QVector<Token> tokenize();
 
-  // Get next token (for streaming)
+  /**
+   * @brief Reads and returns the next token from the stream.
+   * Advances the current position.
+   * @return The next Token.
+   */
   Token nextToken();
 
-  // Peek at next token without consuming
+  /**
+   * @brief Peeks at the next token without advancing the position.
+   * @return The lookahead Token.
+   */
   Token peekToken();
 
-  // Check if at end
+  /**
+   * @brief Checks if the lexer has reached the end of the source.
+   * @return true if at end of file (EOF).
+   */
   bool isAtEnd() const { return m_current >= m_source.length(); }
 
-  // Get error message if any
+  /**
+   * @brief Gets the error message if tokenization failed (e.g., unknown char).
+   * @return The error string.
+   */
   QString errorMessage() const { return m_errorMessage; }
 
 private:

@@ -1,202 +1,126 @@
 # QtFSM - Finite State Machine Designer & Code Generator
 
-A bidirectional FSM tool that generates C++ State pattern code from visual diagrams and creates diagrams from existing C++ code.
+![Status](https://img.shields.io/badge/Status-Active_Development-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Qt](https://img.shields.io/badge/Qt-6.5+-success)
+![C++](https://img.shields.io/badge/C++-17-blue)
 
-## Features
+A professional-grade, bidirectional Finite State Machine (FSM) tool designed to bridge the gap between visual design and robust C++ implementation. QtFSM allows developers to generate production-ready C++ State pattern code from visual diagrams and, uniquely, reverse-engineer diagrams from existing C++ FSM code.
 
-- 🎨 **Visual FSM Editor**: Draw state machines with an intuitive drag-and-drop interface
-- 💻 **Code Generation**: Generate clean C++ State pattern code from diagrams
-- 🔍 **Code Parsing**: Import and visualize existing C++ FSM implementations
-- 💾 **Project Management**: Save/load FSM projects in JSON format
-- ↩️ **Undo/Redo**: Full undo/redo support for all operations
-- 🎯 **MVVM Architecture**: Clean separation of concerns for maintainability
+## 🌟 Key Features
 
-## Requirements
+- **🎨 Visual FSM Editor**: deeply integrated, drag-and-drop canvas for designing complex state machines.
+- **🔄 Bidirectional Engineering**:
+    - **Forward**: Generate compliant C++ State Pattern code.
+    - **Reverse**: Import existing C++ headers/sources to visualize FSM logic.
+- **🏗️ Solid Architecture**: Built on a strict **MVVM (Model-View-ViewModel)** architecture ensuring separation of concerns.
+- **↩️ Robust Undo/Redo**: Command-based history system for all edit operations.
+- **💾 Persistence**: JSON-based project format for saving and sharing designs.
+- **🔌 Extensible Modules**: Modular design with separate subsystems for parsing, generation, serialization, and UI.
 
-### Development
+---
+
+## 📐 Design & Architecture
+
+QtFSM is built with maintainability and scalability in front of mind, adhering to **SOLID principles** and modern C++ best practices.
+
+### Architectural Patter: MVVM (Model-View-ViewModel)
+
+We chose MVVM to decouple the UI (View) from the business logic (Model).
+
+- **Model (`src/model`)**: Pure C++ data structures representing the FSM (States, Transitions, Events). It has no dependency on Qt's GUI classes, making it portable and testable.
+- **ViewModel (`src/viewmodel`)**: The glue layer. It wraps the Model and exposes data to the View via Qt's Signals & Slots. It handles the "business logic" of the UI interactions.
+- **View (`src/view`)**: The presentation layer. Built with Qt Graphics View Framework (`QGraphicsScene`, `QGraphicsView`). It observes the ViewModel and renders the state machine.
+
+### Design Patterns Used
+
+- **Command Pattern**: Used for the Undo/Redo system. Every action (Move State, Add Transition, etc.) is encapsulated as a `QUndoCommand`.
+- **State Pattern**: The code generator creates code following the standard GoF State Pattern.
+- **Observer Pattern**: Heavily used via Qt's Signals/Slots for data binding between ViewModel and View.
+- **Factory Pattern**: Used in formatting and parsing logic.
+
+---
+
+## 📂 Project Structure
+
+The codebase is organized into distinct modules:
+
+| Module | Description |
+|--------|-------------|
+| **`src/model`** | Core data entities (`State`, `Transition`, `FSM`). Independent of UI. |
+| **`src/view`** | GUI components, Dialogs, and Graphics Items (`StateItem`, `TransitionItem`). |
+| **`src/viewmodel`** | Logic controllers (`MainViewModel`, `DiagramViewModel`) managing application state. Includes **Commands**. |
+| **`src/parsing`** | Clang/Regex-based C++ parsers to reconstruct FSMs from code. |
+| **`src/codegen`** | Template-based C++ code generators. |
+| **`src/serialization`** | JSON serializers/deserializers for project persistence. |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 - **Qt 6.5+** (Core, Gui, Widgets)
 - **CMake 3.16+**
-- **C++17 compatible compiler** (gcc 9+, clang 10+, MSVC 2019+)
-- **Git**
+- **C++17 Compiler** (GCC 9+, Clang 10+, MSVC 2019+)
 
-### Build Tools
+### Build Instructions
 
-- CMake
-- Ninja (optional, but recommended)
-- ccache (optional, for faster rebuilds)
-
-## Quick Start
-
-### Linux/WSL2
-
+#### Linux / macOS
 ```bash
-# 1. Install dependencies
-chmod +x scripts/setup_dev_env.sh
+# 1. Setup (Optional)
 ./scripts/setup_dev_env.sh
 
-# 2. Build the project
-cmake --preset dev
-cmake --build build
+# 2. Build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
 
 # 3. Run
 ./build/QtFSM
 ```
 
-### Windows
-
+#### Windows (PowerShell)
 ```powershell
-# 1. Check environment (and install missing tools)
-.\scripts\setup_dev_env.ps1
-
-# 2. Build the project
-cmake --preset dev
+# 1. Build
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --config Debug
 
-# 3. Run
+# 2. Run
 .\build\Debug\QtFSM.exe
 ```
 
-## Development Setup
+---
 
-### Using Qt Creator (Recommended)
+## 🛠️ Usage Workflow
 
-1. Open Qt Creator
-2. File > Open File or Project
-3. Select `CMakeLists.txt`
-4. Choose your kit (Desktop Qt 6.x)
-5. Configure and Build
-
-### Using VSCode
-
-1. Install CMake Tools extension
-2. Open project folder
-3. Select CMake preset (dev or release)
-4. Build and run
-
-## Project Structure
-
-```
-QtFSM/
-├── src/
-│   ├── main.cpp              # Application entry point
-│   ├── model/                # FSM data model
-│   ├── viewmodel/            # MVVM logic layer
-│   ├── view/                 # Qt Widgets UI
-│   ├── codegen/              # Code generation
-│   ├── parser/               # Code parsing
-│   └── serialization/        # JSON save/load
-├── tests/                    # Unit and integration tests
-├── examples/                 # Sample FSM projects
-├── scripts/                  # Setup and utility scripts
-├── docker/                   # Docker configurations
-├── CMakeLists.txt            # Build configuration
-├── CMakePresets.json         # Build presets
-└── .gitlab-ci.yml            # CI/CD pipeline
-```
-
-## Building
-
-### CMake Presets
-
-```bash
-# Development (Debug with tests)
-cmake --preset dev
-cmake --build build
-
-# Release (Optimized)
-cmake --preset release
-cmake --build build-release
-```
-
-### Manual CMake
-
-```bash
-# Debug build
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
-cmake --build build
-
-# Release build
-cmake -B build-release -DCMAKE_BUILD_TYPE=Release
-cmake --build build-release
-```
-
-## Testing
-
-```bash
-# Build with tests enabled
-cmake --preset dev
-cmake --build build
-
-# Run tests
-cd build
-ctest --output-on-failure
-```
-
-## Usage
-
-### Creating an FSM
-
-1. Launch QtFSM
-2. Add states using the toolbar or right-click menu
-3. Connect states with transitions
-4. Edit state/transition properties in the properties panel
-5. Generate C++ code: Tools > Generate Code
-
-### Importing from Code
-
-1. File > Import from Code
-2. Select C++ files containing FSM implementation
-3. FSM will be visualized automatically
-4. Edit and regenerate as needed
-
-## Architecture
-
-QtFSM follows the **MVVM (Model-View-ViewModel)** pattern:
-
-- **Model**: Core FSM data structures (State, Transition, Event)
-- **View**: Qt Widgets UI (QGraphicsView, custom items)
-- **ViewModel**: Mediates between Model and View, handles commands
-
-For detailed architecture information, see the [Design Document](docs/design.md).
-
-## CI/CD
-
-The project uses GitLab CI/CD with the following pipeline:
-
-- **Build**: Multi-platform builds (Linux, Windows, macOS)
-- **Test**: Automated unit and integration tests
-- **Quality**: Static analysis, linting, code coverage
-- **Package**: Create distributable packages
-- **Deploy**: Release artifacts on tags
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Merge Request
-
-## License
-
-[TODO: Add license information]
-
-## Roadmap
-
-- [x] MVVM architecture design
-- [x] Project structure setup
-- [ ] Core model implementation
-- [ ] Visual diagram editor
-- [ ] Code generation (State pattern)
-- [ ] Code parsing
-- [ ] Undo/Redo system
-- [ ] Advanced features (zoom, pan, export diagrams)
-
-## Support
-
-For issues, questions, or suggestions, please open an issue on GitLab.
+1. **Design**: Launch the app and use the toolbar to add States. Drag between states to create Transitions.
+2. **Configure**: Click on a State or Transition to edit its properties (Name, Entry/Exit Actions, Guard Conditions) in the side panel.
+3. **Generate**: Go to **Tools > Generate Code** to export your FSM as C++ classes.
+4. **Iterate**: Save your project (`.fsm.json`) and return later to make changes.
 
 ---
 
-**Status**: 🚧 Under Active Development
+## 📄 Documentation
+
+Detailed documentation for each module can be found in their respective directories:
+
+- [Model Documentation](src/model/README.md)
+- [View Documentation](src/view/README.md)
+- [ViewModel Documentation](src/viewmodel/README.md)
+- [Parsing Documentation](src/parsing/README.md)
+- [Code Generation Documentation](src/codegen/README.md)
+- [Serialization Documentation](src/serialization/README.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow the `CONTRIBUTING.md` guidelines.
+1. Fork the repo.
+2. Create a feature branch.
+3. Submit a Pull Request.
+
+---
+
+**© 2026 QtFSM Team**
+

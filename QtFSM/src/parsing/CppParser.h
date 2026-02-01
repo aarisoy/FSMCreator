@@ -5,18 +5,44 @@
 #include <QString>
 #include <QVector>
 
-
 namespace FSMParser {
 
+/**
+ * @brief The CppParser class performs syntactic analysis (parsing) on a stream
+ * of tokens.
+ *
+ * It implements a recursive descent parser to construct an Abstract Syntax Tree
+ * (AST) representing the C++ code. It specifically looks for patterns relevant
+ * to the State Pattern implementation (classes inheriting from State,
+ * transition logic).
+ *
+ * @ingroup Parsing
+ */
 class CppParser {
 public:
+  /**
+   * @brief Constructs a parser with the given token stream.
+   * @param tokens The vector of tokens produced by the Lexer.
+   */
   explicit CppParser(const QVector<Token> &tokens);
 
-  // Parse entire source into classes
+  /**
+   * @brief Parses the token stream into a list of class declarations.
+   * This is the main entry point for the parsing process.
+   * @return A vector of pointers to ClassDecl AST nodes.
+   */
   QVector<ClassDecl *> parse();
 
-  // Error handling
+  /**
+   * @brief Gets the error message if parsing failed.
+   * @return The error string.
+   */
   QString errorMessage() const { return m_errorMessage; }
+
+  /**
+   * @brief Checks if the parser encountered an error.
+   * @return true if an error occurred, false otherwise.
+   */
   bool hasError() const { return !m_errorMessage.isEmpty(); }
 
 private:

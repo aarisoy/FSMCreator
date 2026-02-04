@@ -25,7 +25,6 @@
 #include <QTextStream>
 #include <QToolBar>
 
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_diagramEditor(nullptr), m_viewModel(nullptr),
       m_propertiesPanel(nullptr), m_darkTheme(false) {
@@ -178,9 +177,6 @@ void MainWindow::createMenus() {
 
   QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
   viewMenu->addAction(m_toggleThemeAction);
-
-  QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
-  // TODO: Add tools actions
 
   QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
   helpMenu->addAction(m_aboutAction);
@@ -359,25 +355,66 @@ void MainWindow::importCpp() {
 }
 
 void MainWindow::saveProject() {
-  if (m_currentFile.isEmpty()) {
-    QString fileName =
-        QFileDialog::getSaveFileName(this, tr("Save FSM Project"), "",
-                                     tr("FSM Files (*.json);;All Files (*)"));
+  FSM *fsm = m_diagramEditor->fsm();
 
-    if (fileName.isEmpty()) {
-      return;
-    }
-
-    m_currentFile = fileName;
+  if (!fsm || fsm->states().isEmpty()) {
+    QMessageBox::warning(this, tr("No FSM to Save"),
+                         tr("Please create at least one state before saving."));
+    return;
   }
 
-  // TODO: Implement JSON serialization properly
-  QMessageBox::information(
-      this, tr("Not Fully Implemented"),
-      tr("JSON saving will be fully implemented in the next update.\n\nFor "
-         "now, use 'Export C++' to save your FSM as generated code."));
+  // If no current file, treat as "Save As"
+  if (m_currentFile.isEmpty()) {
+    saveAsProject();
+    return;
+  }
 
-  statusBar()->showMessage(tr("Saved: %1").arg(m_currentFile));
+  // Save using JSONSerializer
+  JSONSerializer serializer;
+  if (!serializer.save(fsm, m_currentFile)) {
+    QMessageBox::critical(
+        this, tr("Save Failed"),
+        tr("Failed to save project to %1.").arg(m_currentFile));
+    return;
+  }
+
+  statusBar()->showMessage(tr("Project saved: %1").arg(m_currentFile), 3000);
+}
+
+void MainWindow::saveAsProject() {
+  FSM *fsm = m_diagramEditor->fsm();
+
+  if (!fsm || fsm->states().isEmpty()) {
+    QMessageBox::warning(this, tr("No FSM to Save"),
+                         tr("Please create at least one state before saving."));
+    return;
+  }
+
+  // Always ask for a file path (this is "Save As")
+  QString fileName = QFileDialog::getSaveFileName(
+      this, tr("Save FSM Project As"), "",
+      tr("FSM Project Files (*.json);;All Files (*)"));
+
+  if (fileName.isEmpty()) {
+    return;
+  }
+
+  // Ensure .json extension
+  if (!fileName.endsWith(".json", Qt::CaseInsensitive)) {
+    fileName += ".json";
+  }
+
+  // Save using JSONSerializer
+  JSONSerializer serializer;
+  if (!serializer.save(fsm, fileName)) {
+    QMessageBox::critical(this, tr("Save Failed"),
+                          tr("Failed to save project to %1.").arg(fileName));
+    return;
+  }
+
+  // Update current file
+  m_currentFile = fileName;
+  statusBar()->showMessage(tr("Project saved: %1").arg(m_currentFile), 3000);
 }
 
 void MainWindow::exportCpp() {

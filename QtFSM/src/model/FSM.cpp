@@ -1,4 +1,5 @@
 #include "FSM.h"
+#include <QSet>
 
 FSM::FSM(QObject *parent) : QObject(parent), m_initialState(nullptr) {}
 
@@ -29,6 +30,25 @@ void FSM::addState(State *state) {
 }
 
 void FSM::removeState(State *state) {
+  if (!m_states.contains(state)) {
+    return;
+  }
+
+  // CRITICAL FIX: Remove all transitions referencing this state
+  // to prevent dangling pointers
+  QList<Transition *> transitionsToRemove;
+  for (Transition *trans : m_transitions) {
+    if (trans->sourceState() == state || trans->targetState() == state) {
+      transitionsToRemove.append(trans);
+    }
+  }
+
+  // Remove collected transitions
+  for (Transition *trans : transitionsToRemove) {
+    removeTransition(trans);
+  }
+
+  // Now safe to remove the state
   if (m_states.removeOne(state)) {
     if (m_initialState == state) {
       m_initialState = nullptr;
@@ -41,6 +61,25 @@ void FSM::removeState(State *state) {
 
 void FSM::removeStateWithoutDelete(State *state) {
   // Same as removeState but doesn't delete - for undo/redo commands
+  if (!m_states.contains(state)) {
+    return;
+  }
+
+  // CRITICAL FIX: Remove all transitions referencing this state
+  QList<Transition *> transitionsToRemove;
+  for (Transition *trans : m_transitions) {
+    if (trans->sourceState() == state || trans->targetState() == state) {
+      transitionsToRemove.append(trans);
+    }
+  }
+
+  // Remove collected transitions (but don't delete them - command owns them)
+  for (Transition *trans : transitionsToRemove) {
+    m_transitions.removeOne(trans);
+    emit transitionRemoved(trans);
+  }
+
+  // Remove the state
   if (m_states.removeOne(state)) {
     if (m_initialState == state) {
       m_initialState = nullptr;
@@ -133,12 +172,74 @@ bool FSM::validate(QString *errorMessage) const {
     return false;
   }
 
-  // Validate all transitions
-  for (Transition *transition : m_transitions) {
+  // Check for duplicate State IDs
+  QSet<QString> stateIds;
+  for (const State *state : m_states) {
+    if (stateIds.contains(state->id())) {
+      if (errorMessage) {
+        *errorMessage =
+            QString("Duplicate state ID found: %1").arg(state->id());
+      }
+      return false;
+    }
+    stateIds.insert(state->id());
+  }
+
+  // Check for duplicate Transition IDs
+  QSet<QString> transitionIds;
+  for (const Transition *transition : m_transitions) {
+    if (transitionIds.contains(transition->id())) {
+      if (errorMessage) {
+        *errorMessage =
+            QString("Duplicate transition ID found: %1").arg(transition->id());
+      }
+      return false;
+    }
+    transitionIds.insert(transition->id());
+  }
+
+  // Validate all transitions (orphans)
+  for (const Transition *transition : m_transitions) {
     if (!transition->sourceState() || !transition->targetState()) {
       if (errorMessage) {
         *errorMessage = QString("Transition %1 has invalid source or target")
                             .arg(transition->id());
+      }
+      return false;
+    }
+  }
+
+  // Reachability Check (BFS)
+  QSet<State *> reachable;
+  QList<State *> queue;
+
+  if (m_initialState) {
+    queue.append(m_initialState);
+    reachable.insert(m_initialState);
+  }
+
+  while (!queue.isEmpty()) {
+    State *current = queue.takeFirst();
+
+    // Find neighbors (states connected by outgoing transitions)
+    for (const Transition *trans : m_transitions) {
+      if (trans->sourceState() == current) {
+        State *next = trans->targetState();
+        if (next && !reachable.contains(next)) {
+          reachable.insert(next);
+          queue.append(next);
+        }
+      }
+    }
+  }
+
+  // Check if any state is unreachable
+  for (State *state : m_states) {
+    if (!reachable.contains(state)) {
+      if (errorMessage) {
+        *errorMessage =
+            QString("State '%1' is unreachable from the initial state")
+                .arg(state->name());
       }
       return false;
     }

@@ -178,9 +178,6 @@ void MainWindow::createMenus() {
   QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
   viewMenu->addAction(m_toggleThemeAction);
 
-  QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
-  // TODO: Add tools actions
-
   QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
   helpMenu->addAction(m_aboutAction);
 }

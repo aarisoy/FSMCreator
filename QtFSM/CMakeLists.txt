@@ -195,6 +195,13 @@ add_executable(test_json_roundtrip tests/test_json_roundtrip.cpp
 target_link_libraries(test_json_roundtrip PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_json_roundtrip PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+# Validation Test
+add_executable(test_validation tests/test_validation.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+)
+target_link_libraries(test_validation PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_validation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 # Parser Debug Test
 add_executable(test_debug_parser tests/test_debug_parser.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}

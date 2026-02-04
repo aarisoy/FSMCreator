@@ -41,7 +41,7 @@ public:
     return nullptr; // Stay in current state
   }
 
-  std::string getName() const override { return "State1"; }
+  std::string getName() const override { return "Init"; }
 };
 
 // State2 State
@@ -60,7 +60,7 @@ public:
     return nullptr; // Stay in current state
   }
 
-  std::string getName() const override { return "State2"; }
+  std::string getName() const override { return "Run"; }
 };
 
 // FSM Context Manager

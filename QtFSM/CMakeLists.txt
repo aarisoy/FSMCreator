@@ -80,7 +80,6 @@ set(VIEW_HEADERS
 
 set(CODEGEN_SOURCES
     src/codegen/CodeGenerator.cpp
-    src/serialization/JSONSerializer.cpp
     src/parsing/CodeParser.cpp
     src/parsing/Lexer.cpp
     src/parsing/Token.cpp
@@ -98,6 +97,10 @@ set(CODEGEN_HEADERS
     src/parsing/CppParser.h
     src/parsing/AST.h
     src/parsing/ModelBuilder.h
+)
+
+set(SERIALIZATION_SOURCES
+    src/serialization/JSONSerializer.cpp
 )
 
 set(SERIALIZATION_HEADERS
@@ -132,6 +135,7 @@ add_executable(test_stress tests/test_stress.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
     ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
 )
 target_link_libraries(test_stress PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_stress PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -141,6 +145,7 @@ add_executable(test_user_code tests/test_user_code.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
     ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
 )
 target_link_libraries(test_user_code PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_user_code PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -160,6 +165,7 @@ add_executable(test_lexer tests/test_lexer.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
     ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
 )
 target_link_libraries(test_lexer PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_lexer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -169,15 +175,32 @@ add_executable(test_parser tests/test_parser.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
     ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
 )
 target_link_libraries(test_parser PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# FSM Model Test
+add_executable(test_fsm tests/test_fsm.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+)
+target_link_libraries(test_fsm PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_fsm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# JSON Roundtrip Test
+add_executable(test_json_roundtrip tests/test_json_roundtrip.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
+)
+target_link_libraries(test_json_roundtrip PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_json_roundtrip PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Parser Debug Test
 add_executable(test_debug_parser tests/test_debug_parser.cpp
     ${MODEL_SOURCES} ${MODEL_HEADERS}
     ${PARSING_SOURCES} ${PARSING_HEADERS}
     ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
 )
 target_link_libraries(test_debug_parser PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_debug_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

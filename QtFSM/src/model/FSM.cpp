@@ -29,6 +29,25 @@ void FSM::addState(State *state) {
 }
 
 void FSM::removeState(State *state) {
+  if (!m_states.contains(state)) {
+    return;
+  }
+
+  // CRITICAL FIX: Remove all transitions referencing this state
+  // to prevent dangling pointers
+  QList<Transition *> transitionsToRemove;
+  for (Transition *trans : m_transitions) {
+    if (trans->sourceState() == state || trans->targetState() == state) {
+      transitionsToRemove.append(trans);
+    }
+  }
+
+  // Remove collected transitions
+  for (Transition *trans : transitionsToRemove) {
+    removeTransition(trans);
+  }
+
+  // Now safe to remove the state
   if (m_states.removeOne(state)) {
     if (m_initialState == state) {
       m_initialState = nullptr;
@@ -41,6 +60,25 @@ void FSM::removeState(State *state) {
 
 void FSM::removeStateWithoutDelete(State *state) {
   // Same as removeState but doesn't delete - for undo/redo commands
+  if (!m_states.contains(state)) {
+    return;
+  }
+
+  // CRITICAL FIX: Remove all transitions referencing this state
+  QList<Transition *> transitionsToRemove;
+  for (Transition *trans : m_transitions) {
+    if (trans->sourceState() == state || trans->targetState() == state) {
+      transitionsToRemove.append(trans);
+    }
+  }
+
+  // Remove collected transitions (but don't delete them - command owns them)
+  for (Transition *trans : transitionsToRemove) {
+    m_transitions.removeOne(trans);
+    emit transitionRemoved(trans);
+  }
+
+  // Remove the state
   if (m_states.removeOne(state)) {
     if (m_initialState == state) {
       m_initialState = nullptr;

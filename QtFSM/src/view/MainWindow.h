@@ -81,6 +81,11 @@ private slots:
   void saveProject();
 
   /**
+   * @brief Saves the project to a new file path (Save As).
+   */
+  void saveAsProject();
+
+  /**
    * @brief Exports the current FSM to compliant C++ code.
    */
   void exportCpp();

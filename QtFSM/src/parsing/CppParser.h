@@ -82,6 +82,7 @@ private:
   // Helpers
   void skipTo(TokenType type);
   void skipUntilBrace();
+  QString parseQualifiedType();
 };
 
 } // namespace FSMParser

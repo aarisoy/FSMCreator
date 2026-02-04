@@ -245,60 +245,99 @@ ClassDecl *CppParser::parseClass() {
   return classDecl;
 }
 
-FunctionDecl *CppParser::parseFunction() {
-  // Return type
-  Token returnType = advance();
+QString CppParser::parseQualifiedType() {
+  QString result;
 
-  // Consume pointers/refs
-  while (match(TokenType::Star) || match(TokenType::Ampersand)) {
-    // Just skip them for now, we only need the base return type string or just
-    // know it's a function
+  // Handle const before type (e.g., const std::string)
+  if (match(TokenType::Keyword_Const)) {
+    result = "const ";
   }
 
-  // Function name
-  Token funcName = consume(TokenType::Identifier, "Expected function name");
-  if (hasError())
-    return nullptr;
+  // Handle qualified names: std::string, MyNamespace::MyClass, etc.
+  if (check(TokenType::Identifier)) {
+    result += advance().value;
 
-  FunctionDecl *func = new FunctionDecl(returnType.value, funcName.value);
+    // Handle scope resolution: ::
+    while (match(TokenType::DoubleColon)) {
+      result += "::";
+      if (check(TokenType::Identifier)) {
+        result += advance().value;
+      }
+    }
+  } else if (check(TokenType::Keyword_Void)) {
+    result += advance().value;
+  }
+
+  // Handle pointers and references
+  while (check(TokenType::Star) || check(TokenType::Ampersand)) {
+    result += advance().value;
+  }
+
+  // Handle const after type (e.g., MyClass* const)
+  if (match(TokenType::Keyword_Const)) {
+    result += " const";
+  }
+
+  return result;
+}
+
+FunctionDecl *CppParser::parseFunction() {
+  // Parse qualified return type (handles std::string, MyClass*, etc.)
+  QString returnType = parseQualifiedType();
+
+  // Function name - can be simple (myFunc) or qualified (MyClass::myFunc)
+  QString funcName;
+
+  if (check(TokenType::Identifier)) {
+    funcName = advance().value;
+
+    // Check for qualified function name (e.g., MyClass::myMethod)
+    while (match(TokenType::DoubleColon)) {
+      funcName += "::";
+      if (check(TokenType::Identifier)) {
+        funcName += advance().value;
+      }
+    }
+  }
+
+  if (funcName.isEmpty()) {
+    error("Expected function name");
+    return nullptr;
+  }
+
+  FunctionDecl *func = new FunctionDecl(returnType, funcName);
 
   // (
   consume(TokenType::LeftParen, "Expected '(' after function name");
 
   // Parameters
   while (!check(TokenType::RightParen) && !isAtEnd()) {
-    QString typeStr;
-    QString nameStr;
+    // Save position in case we need to backtrack
+    int savedPos = m_current;
 
-    // Capture type tokens until we hit the name (last identifier before comma
-    // or closure) This is a naive heuristic: assume last identifier is name,
-    // previous are type. Better heuristic: Read tokens until ',' or ')'. The
-    // last token is the name. Everything before is type. If there is only one
-    // token, it might be just type (unnamed param) or just name (implicit int?
-    // no). Let's rely on standard "Type Name" or "Type" patterns.
+    // Parse the qualified type (handles std::string, const MyClass&, etc.)
+    QString typeStr = parseQualifiedType();
 
-    QVector<Token> paramTokens;
-    while (!check(TokenType::Comma) && !check(TokenType::RightParen) &&
-           !isAtEnd()) {
-      paramTokens.append(advance());
+    Parameter param;
+
+    // Check if there's a parameter name after the type
+    if (check(TokenType::Identifier)) {
+      // We have both type and name: Type name
+      param.type = typeStr;
+      param.name = advance().value;
+    } else if (!typeStr.isEmpty()) {
+      // Only type, no name (unnamed parameter)
+      param.type = typeStr;
+      // param.name remains empty
+    } else {
+      // Error: couldn't parse type or name, skip to next comma or closing paren
+      while (!check(TokenType::Comma) && !check(TokenType::RightParen) &&
+             !isAtEnd()) {
+        advance();
+      }
     }
 
-    if (!paramTokens.isEmpty()) {
-      Parameter param;
-      if (paramTokens.size() == 1) {
-        // Just one token, assume it's the type (unnamed parameter) or we treat
-        // it as type
-        param.type = paramTokens[0].value;
-        // Name remains empty
-      } else {
-        // Assume last token is name, rest is type
-        param.name = paramTokens.last().value;
-        for (int i = 0; i < paramTokens.size() - 1; ++i) {
-          if (i > 0)
-            param.type += " ";
-          param.type += paramTokens[i].value;
-        }
-      }
+    if (!param.type.isEmpty()) {
       func->parameters.append(param);
     }
 

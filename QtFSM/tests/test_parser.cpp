@@ -2,6 +2,8 @@
 #include "../src/model/State.h"
 #include "../src/model/Transition.h"
 #include "../src/parsing/CodeParser.h"
+#include "../src/parsing/CppParser.h"
+#include "../src/parsing/Lexer.h"
 #include <QSet>
 #include <QString>
 #include <QVector>
@@ -116,4 +118,145 @@ public:
   }
 
   delete fsm;
+}
+
+// Test for Namespaced Types Support (std::string, ABC::func_name)
+TEST(CodeParserTest, ParsesNamespacedTypes) {
+  QString testCode = R"(
+#include <memory>
+#include <string>
+
+class NamespaceTestState : public MyFSMStateBase {
+public:
+    // Test 1: std::string as return type
+    std::string getName() const override {
+        return "test";
+    }
+    
+    // Test 2: Namespaced types in parameters
+    void processEvent(const std::string& eventName, int count) {
+        // body
+    }
+    
+    // Test 3: Pointer to namespaced type
+    std::shared_ptr<State> getNextState() {
+        return nullptr;
+    }
+    
+    // Test 4: Custom namespace
+    MyNamespace::MyType getCustomType() const {
+        return MyNamespace::MyType();
+    }
+    
+    // Test 5: const qualified namespaced type
+    const std::string& getReference() const {
+        return myString;
+    }
+    
+    MyFSMStateBase* handle(MyFSMContext* context, const Event& event) override {
+        if (event.type == "TestEvent") {
+            return new NamespaceTestState();
+        }
+        return nullptr;
+    }
+};
+)";
+
+  // Parse the code
+  CodeParser parser;
+  FSM *fsm = parser.parse(testCode);
+
+  ASSERT_NE(fsm, nullptr)
+      << "Parser should successfully parse namespaced types";
+  ASSERT_EQ(fsm->states().size(), 1) << "Should parse 1 state";
+
+  State *state = fsm->states()[0];
+  EXPECT_EQ(state->name(), "NamespaceTest")
+      << "State name should be NamespaceTest";
+
+  // Verify transition
+  ASSERT_EQ(state->transitions().size(), 1) << "Should have 1 transition";
+  EXPECT_EQ(state->transitions()[0]->event(), "TestEvent");
+  EXPECT_EQ(state->transitions()[0]->targetState()->name(), "NamespaceTest");
+
+  delete fsm;
+}
+
+// Test to verify the parser correctly handles :: operator
+TEST(LexerTest, TokenizesDoubleColonOperator) {
+  using namespace FSMParser;
+
+  QString source = "std::string ABC::func MyNamespace::Type";
+  Lexer lexer(source);
+
+  QVector<Token> tokens = lexer.tokenize();
+
+  // Should have: std, ::, string, ABC, ::, func, MyNamespace, ::, Type, EOF
+  ASSERT_GE(tokens.size(), 9);
+
+  EXPECT_EQ(tokens[0].type, TokenType::Identifier);
+  EXPECT_EQ(tokens[0].value, "std");
+
+  EXPECT_EQ(tokens[1].type, TokenType::DoubleColon);
+  EXPECT_EQ(tokens[1].value, "::");
+
+  EXPECT_EQ(tokens[2].type, TokenType::Identifier);
+  EXPECT_EQ(tokens[2].value, "string");
+
+  EXPECT_EQ(tokens[3].type, TokenType::Identifier);
+  EXPECT_EQ(tokens[3].value, "ABC");
+
+  EXPECT_EQ(tokens[4].type, TokenType::DoubleColon);
+  EXPECT_EQ(tokens[4].value, "::");
+
+  EXPECT_EQ(tokens[5].type, TokenType::Identifier);
+  EXPECT_EQ(tokens[5].value, "func");
+}
+
+// Test for Qualified Function Names (ABC::func_name)
+TEST(CppParserTest, ParsesQualifiedFunctionNames) {
+  using namespace FSMParser;
+
+  QString testCode = R"(
+class MyClass : public MyFSMStateBase {
+public:
+    // Simple member function
+    std::string getName() const override {
+        return "test";
+    }
+    
+    MyFSMStateBase* handle(MyFSMContext* context, const Event& event) override {
+        if (event.type == "Test") {
+            return new MyClass();
+        }
+        return nullptr;
+    }
+};
+
+// Out-of-class definition with qualified function name
+std::string MyClass::getName() const {
+    return "MyClass";
+}
+
+// Namespace function
+void MyNamespace::processEvent(const Event& e) {
+    // body
+}
+)";
+
+  Lexer lexer(testCode);
+  QVector<Token> tokens = lexer.tokenize();
+
+  CppParser parser(tokens);
+  QVector<ClassDecl *> classes = parser.parse();
+
+  // Should successfully parse the class
+  ASSERT_EQ(classes.size(), 1) << "Should parse 1 class";
+  EXPECT_EQ(classes[0]->name, "MyClass");
+
+  // The class should have methods
+  EXPECT_GE(classes[0]->methods.size(), 1) << "Should have at least 1 method";
+
+  // Clean up
+  qDeleteAll(classes);
 }

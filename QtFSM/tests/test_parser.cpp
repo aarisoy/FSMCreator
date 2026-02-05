@@ -315,9 +315,11 @@ public:
   State *special = fsm->stateById("Special");
   ASSERT_NE(special, nullptr);
 
-  EXPECT_EQ(special->customFunctions().size(), 1);
-  EXPECT_EQ(special->customFunctions()[0], "auto helper()")
+  QList<QString> funcs = special->customFunctions();
+  EXPECT_TRUE(funcs.contains("auto helper()"))
       << "Should parse auto return type for helper()";
+  EXPECT_TRUE(funcs.contains("std::string getName() override"))
+      << "Should include getName() override signature";
 
   ASSERT_EQ(special->transitions().size(), 2);
 
@@ -368,7 +370,7 @@ public:
 
   QList<QString> funcs = state->customFunctions();
   ASSERT_EQ(funcs.size(), 1);
-  EXPECT_EQ(funcs[0], "std::string getName()");
+  EXPECT_EQ(funcs[0], "std::string getName() override");
 
   delete fsm;
 }

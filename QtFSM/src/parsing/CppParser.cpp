@@ -183,6 +183,36 @@ ClassDecl *CppParser::parseClass() {
       int saved = m_current;
       Token first = advance(); //  Return type or constructor name
 
+      if (first.type == TokenType::Keyword_Const) {
+        if (check(TokenType::Identifier)) {
+          advance();
+          while (match(TokenType::DoubleColon)) {
+            if (check(TokenType::Identifier)) {
+              advance();
+            }
+          }
+        }
+      } else if (first.type == TokenType::Identifier) {
+        while (match(TokenType::DoubleColon)) {
+          if (check(TokenType::Identifier)) {
+            advance();
+          }
+        }
+      }
+
+      if (match(TokenType::Less)) {
+        int templateDepth = 1;
+        while (!isAtEnd() && templateDepth > 0) {
+          if (match(TokenType::Less)) {
+            templateDepth++;
+          } else if (match(TokenType::Greater)) {
+            templateDepth--;
+          } else {
+            advance();
+          }
+        }
+      }
+
       // Skip pointers/refs in return type
       while (check(TokenType::Star) || check(TokenType::Ampersand)) {
         advance();
@@ -281,6 +311,28 @@ QString CppParser::parseQualifiedType() {
   // Handle pointers and references
   while (check(TokenType::Star) || check(TokenType::Ampersand)) {
     result += advance().value;
+  }
+
+  if (match(TokenType::Less)) {
+    result += "<";
+    int templateDepth = 1;
+    while (!isAtEnd() && templateDepth > 0) {
+      if (match(TokenType::Less)) {
+        result += "<";
+        templateDepth++;
+        continue;
+      }
+      if (match(TokenType::Greater)) {
+        result += ">";
+        templateDepth--;
+        continue;
+      }
+      Token tok = advance();
+      result += tok.value;
+      if (tok.type == TokenType::Comma) {
+        result += " ";
+      }
+    }
   }
 
   // Handle const after type (e.g., MyClass* const)
@@ -534,7 +586,20 @@ Expression *CppParser::parsePrimary() {
   }
 
   if (match(TokenType::Identifier)) {
-    return new IdentifierExpr(previous().value);
+    QString name = previous().value;
+    while (match(TokenType::DoubleColon)) {
+      name += "::";
+      if (check(TokenType::Identifier)) {
+        name += advance().value;
+      }
+    }
+    if (match(TokenType::LeftParen)) {
+      while (!check(TokenType::RightParen) && !isAtEnd()) {
+        advance();
+      }
+      consume(TokenType::RightParen, "Expected ')' after call");
+    }
+    return new IdentifierExpr(name);
   }
 
   // Unknown - skip

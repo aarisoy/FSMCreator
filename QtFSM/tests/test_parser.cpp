@@ -335,3 +335,40 @@ public:
 
   delete fsm;
 }
+
+TEST(CodeParserTest, ParsesStdStringReturnTypes) {
+  QString testCode = R"(
+class MyFSMStateBase {
+public:
+    virtual ~MyFSMStateBase() = default;
+    virtual MyFSMStateBase* handle(MyFSMContext* context, const Event& event) = 0;
+    virtual std::string getName() const = 0;
+};
+
+class StdStringState : public MyFSMStateBase {
+public:
+    std::string getName() const override { return "StdString"; }
+
+    MyFSMStateBase* handle(MyFSMContext* context, const Event& event) override {
+        if (event.type == "Next") {
+            return new StdStringState();
+        }
+        return nullptr;
+    }
+};
+)";
+
+  CodeParser parser;
+  FSM *fsm = parser.parse(testCode);
+
+  ASSERT_NE(fsm, nullptr);
+
+  State *state = fsm->stateById("StdString");
+  ASSERT_NE(state, nullptr);
+
+  QList<QString> funcs = state->customFunctions();
+  ASSERT_EQ(funcs.size(), 1);
+  EXPECT_EQ(funcs[0], "std::string getName()");
+
+  delete fsm;
+}

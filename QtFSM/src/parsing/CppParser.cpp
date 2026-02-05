@@ -177,7 +177,8 @@ ClassDecl *CppParser::parseClass() {
     }
 
     // Try to parse function
-    if (check(TokenType::Identifier) || check(TokenType::Keyword_Void)) {
+    if (check(TokenType::Identifier) || check(TokenType::Keyword_Void) ||
+        check(TokenType::Keyword_Const) || check(TokenType::Keyword_Auto)) {
       // Peek ahead to see if this looks like a function
       int saved = m_current;
       Token first = advance(); //  Return type or constructor name

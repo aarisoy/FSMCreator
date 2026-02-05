@@ -260,3 +260,78 @@ void MyNamespace::processEvent(const Event& e) {
   // Clean up
   qDeleteAll(classes);
 }
+
+TEST(CodeParserTest, ParsesSpecialKeywordCases) {
+  QString testCode = R"(
+class MyFSMStateBase {
+public:
+    virtual ~MyFSMStateBase() = default;
+    virtual MyFSMStateBase* handle(MyFSMContext* context, const Event& event) = 0;
+    virtual std::string getName() const = 0;
+};
+
+class SpecialState : public MyFSMStateBase {
+public:
+    enum class Mode { Idle, Active };
+
+    auto helper() const {
+        return 42;
+    }
+
+    MyFSMStateBase* handle(MyFSMContext* context, const Event& event) override {
+        if (event.type == "Start") {
+            return static_cast<MyFSMStateBase*>(new ActiveState());
+        } else if (event.type == "Stop") {
+            return new IdleState();
+        }
+        return nullptr;
+    }
+
+    std::string getName() const override { return "Special"; }
+};
+
+class ActiveState : public MyFSMStateBase {
+public:
+    MyFSMStateBase* handle(MyFSMContext* context, const Event& event) override {
+        return nullptr;
+    }
+    std::string getName() const override { return "Active"; }
+};
+
+class IdleState : public MyFSMStateBase {
+public:
+    MyFSMStateBase* handle(MyFSMContext* context, const Event& event) override {
+        return nullptr;
+    }
+    std::string getName() const override { return "Idle"; }
+};
+)";
+
+  CodeParser parser;
+  FSM *fsm = parser.parse(testCode);
+
+  ASSERT_NE(fsm, nullptr);
+
+  State *special = fsm->stateById("Special");
+  ASSERT_NE(special, nullptr);
+
+  EXPECT_EQ(special->customFunctions().size(), 1);
+  EXPECT_EQ(special->customFunctions()[0], "auto helper()")
+      << "Should parse auto return type for helper()";
+
+  ASSERT_EQ(special->transitions().size(), 2);
+
+  QSet<QString> transitionEvents;
+  QSet<QString> transitionTargets;
+  for (Transition *transition : special->transitions()) {
+    transitionEvents.insert(transition->event());
+    transitionTargets.insert(transition->targetState()->name());
+  }
+
+  EXPECT_TRUE(transitionEvents.contains("Start"));
+  EXPECT_TRUE(transitionEvents.contains("Stop"));
+  EXPECT_TRUE(transitionTargets.contains("Active"));
+  EXPECT_TRUE(transitionTargets.contains("Idle"));
+
+  delete fsm;
+}

@@ -8,6 +8,8 @@ QString Token::typeName() const {
     return "class";
   case TokenType::Keyword_Struct:
     return "struct";
+  case TokenType::Keyword_Enum:
+    return "enum";
   case TokenType::Keyword_Public:
     return "public";
   case TokenType::Keyword_Private:
@@ -32,6 +34,10 @@ QString Token::typeName() const {
     return "const";
   case TokenType::Keyword_Void:
     return "void";
+  case TokenType::Keyword_Auto:
+    return "auto";
+  case TokenType::Keyword_StaticCast:
+    return "static_cast";
   case TokenType::Identifier:
     return "identifier";
   case TokenType::StringLiteral:

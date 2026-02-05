@@ -78,10 +78,12 @@ private:
   Expression *parseFactor();
   Expression *parsePostfix();
   Expression *parsePrimary();
+  Expression *parseStaticCastExpression();
 
   // Helpers
   void skipTo(TokenType type);
   void skipUntilBrace();
+  void skipEnumDeclaration();
   QString parseQualifiedType();
 };
 

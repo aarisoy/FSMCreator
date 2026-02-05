@@ -144,6 +144,11 @@ ClassDecl *CppParser::parseClass() {
       continue;
     }
 
+    if (match(TokenType::Keyword_Enum)) {
+      skipEnumDeclaration();
+      continue;
+    }
+
     // Skip virtual keyword
     bool isVirtual = match(TokenType::Keyword_Virtual);
 
@@ -253,6 +258,9 @@ QString CppParser::parseQualifiedType() {
     result = "const ";
   }
 
+  if (match(TokenType::Keyword_Auto)) {
+    result += "auto";
+  } else {
   // Handle qualified names: std::string, MyNamespace::MyClass, etc.
   if (check(TokenType::Identifier)) {
     result += advance().value;
@@ -266,6 +274,7 @@ QString CppParser::parseQualifiedType() {
     }
   } else if (check(TokenType::Keyword_Void)) {
     result += advance().value;
+  }
   }
 
   // Handle pointers and references
@@ -430,6 +439,28 @@ IfStatement *CppParser::parseIfStatement() {
   // }
   consume(TokenType::RightBrace, "Expected '}' after if body");
 
+  if (match(TokenType::Keyword_Else)) {
+    if (match(TokenType::Keyword_If)) {
+      IfStatement *elseIf = parseIfStatement();
+      if (elseIf) {
+        ifStmt->elseBlock.append(elseIf);
+      }
+    } else if (match(TokenType::LeftBrace)) {
+      while (!check(TokenType::RightBrace) && !isAtEnd()) {
+        Statement *stmt = parseStatement();
+        if (stmt) {
+          ifStmt->elseBlock.append(stmt);
+        }
+      }
+      consume(TokenType::RightBrace, "Expected '}' after else body");
+    } else {
+      Statement *stmt = parseStatement();
+      if (stmt) {
+        ifStmt->elseBlock.append(stmt);
+      }
+    }
+  }
+
   return ifStmt;
 }
 
@@ -481,6 +512,10 @@ Expression *CppParser::parsePostfix() {
 }
 
 Expression *CppParser::parsePrimary() {
+  if (match(TokenType::Keyword_StaticCast)) {
+    return parseStaticCastExpression();
+  }
+
   if (match(TokenType::Keyword_New)) {
     Token typeName =
         consume(TokenType::Identifier, "Expected type name after 'new'");
@@ -504,6 +539,79 @@ Expression *CppParser::parsePrimary() {
   // Unknown - skip
   advance();
   return new IdentifierExpr("unknown");
+}
+
+Expression *CppParser::parseStaticCastExpression() {
+  if (match(TokenType::Less)) {
+    int templateDepth = 1;
+    while (!isAtEnd() && templateDepth > 0) {
+      if (match(TokenType::Less)) {
+        templateDepth++;
+      } else if (match(TokenType::Greater)) {
+        templateDepth--;
+      } else {
+        advance();
+      }
+    }
+  }
+
+  Expression *innerExpr = nullptr;
+
+  if (match(TokenType::LeftParen)) {
+    int parenDepth = 1;
+    while (!isAtEnd() && parenDepth > 0) {
+      if (check(TokenType::LeftParen)) {
+        parenDepth++;
+        advance();
+        continue;
+      }
+      if (check(TokenType::RightParen)) {
+        parenDepth--;
+        advance();
+        continue;
+      }
+      if (!innerExpr && check(TokenType::Keyword_New)) {
+        innerExpr = parsePrimary();
+        continue;
+      }
+      advance();
+    }
+  }
+
+  if (innerExpr) {
+    return innerExpr;
+  }
+
+  return new IdentifierExpr("static_cast");
+}
+
+void CppParser::skipEnumDeclaration() {
+  match(TokenType::Keyword_Class);
+  match(TokenType::Keyword_Struct);
+
+  if (check(TokenType::Identifier)) {
+    advance();
+  }
+
+  if (match(TokenType::LeftBrace)) {
+    int braceCount = 1;
+    while (braceCount > 0 && !isAtEnd()) {
+      if (match(TokenType::LeftBrace)) {
+        braceCount++;
+      } else if (match(TokenType::RightBrace)) {
+        braceCount--;
+      } else {
+        advance();
+      }
+    }
+    match(TokenType::Semicolon);
+    return;
+  }
+
+  while (!check(TokenType::Semicolon) && !isAtEnd()) {
+    advance();
+  }
+  match(TokenType::Semicolon);
 }
 
 } // namespace FSMParser

@@ -8,6 +8,7 @@ enum class TokenType {
   // Keywords
   Keyword_Class,
   Keyword_Struct,
+  Keyword_Enum,
   Keyword_Public,
   Keyword_Private,
   Keyword_Protected,
@@ -20,6 +21,8 @@ enum class TokenType {
   Keyword_This,
   Keyword_Const,
   Keyword_Void,
+  Keyword_Auto,
+  Keyword_StaticCast,
 
   // Identifiers and Literals
   Identifier,
@@ -69,7 +72,8 @@ struct Token {
       : type(t), value(v), line(l), column(c) {}
 
   bool isKeyword() const {
-    return type >= TokenType::Keyword_Class && type <= TokenType::Keyword_Void;
+    return type >= TokenType::Keyword_Class &&
+           type <= TokenType::Keyword_StaticCast;
   }
 
   bool isOperator() const {

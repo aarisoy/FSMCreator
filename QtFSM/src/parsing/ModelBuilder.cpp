@@ -149,6 +149,12 @@ void ModelBuilder::visitIfStatement(IfStatement *node) {
       }
     }
   }
+
+  for (Statement *stmt : node->elseBlock) {
+    if (stmt) {
+      stmt->accept(this);
+    }
+  }
 }
 
 void ModelBuilder::visitReturnStatement(ReturnStatement *node) {

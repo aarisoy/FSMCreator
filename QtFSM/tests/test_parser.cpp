@@ -248,7 +248,13 @@ void MyNamespace::processEvent(const Event& e) {
   QVector<Token> tokens = lexer.tokenize();
 
   CppParser parser(tokens);
-  QVector<ClassDecl *> classes = parser.parse();
+  QVector<ASTNode *> nodes = parser.parse();
+  QVector<ClassDecl *> classes;
+  for (ASTNode *node : nodes) {
+    if (auto *classDecl = dynamic_cast<ClassDecl *>(node)) {
+      classes.append(classDecl);
+    }
+  }
 
   // Should successfully parse the class
   ASSERT_EQ(classes.size(), 1) << "Should parse 1 class";
@@ -258,5 +264,5 @@ void MyNamespace::processEvent(const Event& e) {
   EXPECT_GE(classes[0]->methods.size(), 1) << "Should have at least 1 method";
 
   // Clean up
-  qDeleteAll(classes);
+  qDeleteAll(nodes);
 }

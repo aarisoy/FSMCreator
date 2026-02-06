@@ -49,22 +49,22 @@ FSM *CodeParser::parse(const QString &code, QObject *parent) {
 
     // Step 2: Parse to AST
     CppParser parser(tokens);
-    QVector<ClassDecl *> classes = parser.parse();
+    QVector<ASTNode *> nodes = parser.parse();
 
     if (parser.hasError()) {
       m_lastError = "Parser error: " + parser.errorMessage();
       qDebug() << m_lastError;
-      qDeleteAll(classes);
+      qDeleteAll(nodes);
       delete fsm;
       return nullptr;
     }
 
     // Step 3: Build FSM model from AST
     ModelBuilder builder(fsm);
-    builder.build(classes);
+    builder.build(nodes);
 
     // Cleanup AST
-    qDeleteAll(classes);
+    qDeleteAll(nodes);
 
     qDebug() << "✅ New parser: Parsed" << fsm->states().size() << "states";
     for (State *state : fsm->states()) {

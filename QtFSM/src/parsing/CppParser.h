@@ -29,9 +29,9 @@ public:
   /**
    * @brief Parses the token stream into a list of class declarations.
    * This is the main entry point for the parsing process.
-   * @return A vector of pointers to ClassDecl AST nodes.
+   * @return A vector of pointers to AST nodes.
    */
-  QVector<ClassDecl *> parse();
+  QVector<ASTNode *> parse();
 
   /**
    * @brief Gets the error message if parsing failed.
@@ -65,6 +65,7 @@ private:
 
   // Parsing methods
   ClassDecl *parseClass();
+  EnumDecl *parseEnum();
   FunctionDecl *parseFunction();
   Statement *parseStatement();
   IfStatement *parseIfStatement();

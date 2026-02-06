@@ -130,12 +130,23 @@ public:
   void accept(ASTVisitor *visitor) override;
 };
 
+class EnumDecl : public ASTNode {
+public:
+  QString name;
+  QVector<QString> enumerators;
+  bool isEnumClass = false;
+
+  EnumDecl(const QString &n, bool isClass) : name(n), isEnumClass(isClass) {}
+  void accept(ASTVisitor *visitor) override;
+};
+
 // Visitor interface
 class ASTVisitor {
 public:
   virtual ~ASTVisitor() = default;
 
   virtual void visitClassDecl(ClassDecl *node) = 0;
+  virtual void visitEnumDecl(EnumDecl *node) = 0;
   virtual void visitFunctionDecl(FunctionDecl *node) = 0;
   virtual void visitIfStatement(IfStatement *node) = 0;
   virtual void visitReturnStatement(ReturnStatement *node) = 0;

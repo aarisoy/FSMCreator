@@ -68,22 +68,30 @@ void CppParser::synchronize() {
   }
 }
 
-QVector<ClassDecl *> CppParser::parse() {
-  QVector<ClassDecl *> classes;
+QVector<ASTNode *> CppParser::parse() {
+  QVector<ASTNode *> nodes;
 
   while (!isAtEnd()) {
+    if (match(TokenType::Keyword_Enum)) {
+      EnumDecl *enumDecl = parseEnum();
+      if (enumDecl) {
+        nodes.append(enumDecl);
+      }
+      continue;
+    }
+
     // Skip until we find 'class'
     if (match(TokenType::Keyword_Class)) {
       ClassDecl *classDecl = parseClass();
       if (classDecl) {
-        classes.append(classDecl);
+        nodes.append(classDecl);
       }
     } else {
       advance(); // Skip other tokens
     }
   }
 
-  return classes;
+  return nodes;
 }
 
 ClassDecl *CppParser::parseClass() {
@@ -245,6 +253,37 @@ ClassDecl *CppParser::parseClass() {
   return classDecl;
 }
 
+EnumDecl *CppParser::parseEnum() {
+  // Optional "class" in "enum class"
+  bool isEnumClass = match(TokenType::Keyword_Class);
+
+  Token nameToken = consume(TokenType::Identifier, "Expected enum name");
+  if (hasError()) {
+    return nullptr;
+  }
+
+  EnumDecl *enumDecl = new EnumDecl(nameToken.value, isEnumClass);
+
+  consume(TokenType::LeftBrace, "Expected '{' after enum name");
+
+  while (!check(TokenType::RightBrace) && !isAtEnd()) {
+    Token entry = consume(TokenType::Identifier, "Expected enum entry");
+    if (hasError()) {
+      break;
+    }
+    enumDecl->enumerators.append(entry.value);
+
+    if (match(TokenType::Comma)) {
+      continue;
+    }
+  }
+
+  consume(TokenType::RightBrace, "Expected '}' after enum body");
+  match(TokenType::Semicolon); // Optional
+
+  return enumDecl;
+}
+
 QString CppParser::parseQualifiedType() {
   QString result;
 
@@ -253,19 +292,23 @@ QString CppParser::parseQualifiedType() {
     result = "const ";
   }
 
-  // Handle qualified names: std::string, MyNamespace::MyClass, etc.
-  if (check(TokenType::Identifier)) {
-    result += advance().value;
+  if (match(TokenType::Keyword_Auto)) {
+    result += "auto";
+  } else {
+    // Handle qualified names: std::string, MyNamespace::MyClass, etc.
+    if (check(TokenType::Identifier)) {
+      result += advance().value;
 
-    // Handle scope resolution: ::
-    while (match(TokenType::DoubleColon)) {
-      result += "::";
-      if (check(TokenType::Identifier)) {
-        result += advance().value;
+      // Handle scope resolution: ::
+      while (match(TokenType::DoubleColon)) {
+        result += "::";
+        if (check(TokenType::Identifier)) {
+          result += advance().value;
+        }
       }
+    } else if (check(TokenType::Keyword_Void)) {
+      result += advance().value;
     }
-  } else if (check(TokenType::Keyword_Void)) {
-    result += advance().value;
   }
 
   // Handle pointers and references
@@ -356,6 +399,8 @@ FunctionDecl *CppParser::parseFunction() {
   if (match(TokenType::Keyword_Override)) {
     func->isOverride = true;
   }
+  // Optional final
+  match(TokenType::Keyword_Final);
 
   // {
   if (!match(TokenType::LeftBrace)) {
@@ -429,6 +474,24 @@ IfStatement *CppParser::parseIfStatement() {
 
   // }
   consume(TokenType::RightBrace, "Expected '}' after if body");
+
+  if (match(TokenType::Keyword_Else)) {
+    if (match(TokenType::Keyword_If)) {
+      IfStatement *elseIf = parseIfStatement();
+      if (elseIf) {
+        ifStmt->elseBlock.append(elseIf);
+      }
+    } else {
+      consume(TokenType::LeftBrace, "Expected '{' after else");
+      while (!check(TokenType::RightBrace) && !isAtEnd()) {
+        Statement *stmt = parseStatement();
+        if (stmt) {
+          ifStmt->elseBlock.append(stmt);
+        }
+      }
+      consume(TokenType::RightBrace, "Expected '}' after else body");
+    }
+  }
 
   return ifStmt;
 }

@@ -33,4 +33,6 @@ void FunctionDecl::accept(ASTVisitor *visitor) {
 
 void ClassDecl::accept(ASTVisitor *visitor) { visitor->visitClassDecl(this); }
 
+void EnumDecl::accept(ASTVisitor *visitor) { visitor->visitEnumDecl(this); }
+
 } // namespace FSMParser

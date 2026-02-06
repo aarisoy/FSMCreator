@@ -28,12 +28,13 @@ public:
 
   /**
    * @brief Builds the model from a list of class declarations.
-   * @param classes The vector of parsed ClassNodes.
+   * @param nodes The vector of parsed AST nodes.
    */
-  void build(const QVector<ClassDecl *> &classes);
+  void build(const QVector<ASTNode *> &nodes);
 
   // Visitor methods
   void visitClassDecl(ClassDecl *node) override;
+  void visitEnumDecl(EnumDecl *node) override;
   void visitFunctionDecl(FunctionDecl *node) override;
   void visitIfStatement(IfStatement *node) override;
   void visitReturnStatement(ReturnStatement *node) override;

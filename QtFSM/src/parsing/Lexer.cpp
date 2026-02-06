@@ -19,6 +19,9 @@ void Lexer::initKeywords() {
   m_keywords["this"] = TokenType::Keyword_This;
   m_keywords["const"] = TokenType::Keyword_Const;
   m_keywords["void"] = TokenType::Keyword_Void;
+  m_keywords["enum"] = TokenType::Keyword_Enum;
+  m_keywords["auto"] = TokenType::Keyword_Auto;
+  m_keywords["final"] = TokenType::Keyword_Final;
 }
 
 QChar Lexer::peek() const {

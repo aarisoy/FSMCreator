@@ -75,6 +75,7 @@ struct Token {
   bool isKeyword() const {
     return type >= TokenType::Keyword_Class &&
            type <= TokenType::Keyword_Final;
+           type <= TokenType::Keyword_StaticCast;
   }
 
   bool isOperator() const {

@@ -7,6 +7,7 @@ Lexer::Lexer(const QString &source) : m_source(source) { initKeywords(); }
 void Lexer::initKeywords() {
   m_keywords["class"] = TokenType::Keyword_Class;
   m_keywords["struct"] = TokenType::Keyword_Struct;
+  m_keywords["enum"] = TokenType::Keyword_Enum;
   m_keywords["public"] = TokenType::Keyword_Public;
   m_keywords["private"] = TokenType::Keyword_Private;
   m_keywords["protected"] = TokenType::Keyword_Protected;
@@ -19,8 +20,8 @@ void Lexer::initKeywords() {
   m_keywords["this"] = TokenType::Keyword_This;
   m_keywords["const"] = TokenType::Keyword_Const;
   m_keywords["void"] = TokenType::Keyword_Void;
-  m_keywords["enum"] = TokenType::Keyword_Enum;
   m_keywords["auto"] = TokenType::Keyword_Auto;
+  m_keywords["static_cast"] = TokenType::Keyword_StaticCast;
   m_keywords["final"] = TokenType::Keyword_Final;
 }
 

@@ -68,30 +68,22 @@ void CppParser::synchronize() {
   }
 }
 
-QVector<ASTNode *> CppParser::parse() {
-  QVector<ASTNode *> nodes;
+QVector<ClassDecl *> CppParser::parse() {
+  QVector<ClassDecl *> classes;
 
   while (!isAtEnd()) {
-    if (match(TokenType::Keyword_Enum)) {
-      EnumDecl *enumDecl = parseEnum();
-      if (enumDecl) {
-        nodes.append(enumDecl);
-      }
-      continue;
-    }
-
     // Skip until we find 'class'
     if (match(TokenType::Keyword_Class)) {
       ClassDecl *classDecl = parseClass();
       if (classDecl) {
-        nodes.append(classDecl);
+        classes.append(classDecl);
       }
     } else {
       advance(); // Skip other tokens
     }
   }
 
-  return nodes;
+  return classes;
 }
 
 ClassDecl *CppParser::parseClass() {
@@ -152,6 +144,11 @@ ClassDecl *CppParser::parseClass() {
       continue;
     }
 
+    if (match(TokenType::Keyword_Enum)) {
+      skipEnumDeclaration();
+      continue;
+    }
+
     // Skip virtual keyword
     bool isVirtual = match(TokenType::Keyword_Virtual);
 
@@ -180,10 +177,41 @@ ClassDecl *CppParser::parseClass() {
     }
 
     // Try to parse function
-    if (check(TokenType::Identifier) || check(TokenType::Keyword_Void)) {
+    if (check(TokenType::Identifier) || check(TokenType::Keyword_Void) ||
+        check(TokenType::Keyword_Const) || check(TokenType::Keyword_Auto)) {
       // Peek ahead to see if this looks like a function
       int saved = m_current;
       Token first = advance(); //  Return type or constructor name
+
+      if (first.type == TokenType::Keyword_Const) {
+        if (check(TokenType::Identifier)) {
+          advance();
+          while (match(TokenType::DoubleColon)) {
+            if (check(TokenType::Identifier)) {
+              advance();
+            }
+          }
+        }
+      } else if (first.type == TokenType::Identifier) {
+        while (match(TokenType::DoubleColon)) {
+          if (check(TokenType::Identifier)) {
+            advance();
+          }
+        }
+      }
+
+      if (match(TokenType::Less)) {
+        int templateDepth = 1;
+        while (!isAtEnd() && templateDepth > 0) {
+          if (match(TokenType::Less)) {
+            templateDepth++;
+          } else if (match(TokenType::Greater)) {
+            templateDepth--;
+          } else {
+            advance();
+          }
+        }
+      }
 
       // Skip pointers/refs in return type
       while (check(TokenType::Star) || check(TokenType::Ampersand)) {
@@ -253,37 +281,6 @@ ClassDecl *CppParser::parseClass() {
   return classDecl;
 }
 
-EnumDecl *CppParser::parseEnum() {
-  // Optional "class" in "enum class"
-  bool isEnumClass = match(TokenType::Keyword_Class);
-
-  Token nameToken = consume(TokenType::Identifier, "Expected enum name");
-  if (hasError()) {
-    return nullptr;
-  }
-
-  EnumDecl *enumDecl = new EnumDecl(nameToken.value, isEnumClass);
-
-  consume(TokenType::LeftBrace, "Expected '{' after enum name");
-
-  while (!check(TokenType::RightBrace) && !isAtEnd()) {
-    Token entry = consume(TokenType::Identifier, "Expected enum entry");
-    if (hasError()) {
-      break;
-    }
-    enumDecl->enumerators.append(entry.value);
-
-    if (match(TokenType::Comma)) {
-      continue;
-    }
-  }
-
-  consume(TokenType::RightBrace, "Expected '}' after enum body");
-  match(TokenType::Semicolon); // Optional
-
-  return enumDecl;
-}
-
 QString CppParser::parseQualifiedType() {
   QString result;
 
@@ -295,20 +292,20 @@ QString CppParser::parseQualifiedType() {
   if (match(TokenType::Keyword_Auto)) {
     result += "auto";
   } else {
-    // Handle qualified names: std::string, MyNamespace::MyClass, etc.
-    if (check(TokenType::Identifier)) {
-      result += advance().value;
+  // Handle qualified names: std::string, MyNamespace::MyClass, etc.
+  if (check(TokenType::Identifier)) {
+    result += advance().value;
 
-      // Handle scope resolution: ::
-      while (match(TokenType::DoubleColon)) {
-        result += "::";
-        if (check(TokenType::Identifier)) {
-          result += advance().value;
-        }
+    // Handle scope resolution: ::
+    while (match(TokenType::DoubleColon)) {
+      result += "::";
+      if (check(TokenType::Identifier)) {
+        result += advance().value;
       }
-    } else if (check(TokenType::Keyword_Void)) {
-      result += advance().value;
     }
+  } else if (check(TokenType::Keyword_Void)) {
+    result += advance().value;
+  }
   }
 
   // Handle pointers and references
@@ -421,8 +418,9 @@ FunctionDecl *CppParser::parseFunction() {
   if (match(TokenType::Keyword_Override)) {
     func->isOverride = true;
   }
-  // Optional final
-  match(TokenType::Keyword_Final);
+  if (match(TokenType::Keyword_Final)) {
+    func->isFinal = true;
+  }
 
   // {
   if (!match(TokenType::LeftBrace)) {
@@ -570,6 +568,10 @@ Expression *CppParser::parsePostfix() {
 }
 
 Expression *CppParser::parsePrimary() {
+  if (match(TokenType::Keyword_StaticCast)) {
+    return parseStaticCastExpression();
+  }
+
   if (match(TokenType::Keyword_New)) {
     Token typeName =
         consume(TokenType::Identifier, "Expected type name after 'new'");
@@ -587,12 +589,98 @@ Expression *CppParser::parsePrimary() {
   }
 
   if (match(TokenType::Identifier)) {
-    return new IdentifierExpr(previous().value);
+    QString name = previous().value;
+    while (match(TokenType::DoubleColon)) {
+      name += "::";
+      if (check(TokenType::Identifier)) {
+        name += advance().value;
+      }
+    }
+    if (match(TokenType::LeftParen)) {
+      while (!check(TokenType::RightParen) && !isAtEnd()) {
+        advance();
+      }
+      consume(TokenType::RightParen, "Expected ')' after call");
+    }
+    return new IdentifierExpr(name);
   }
 
   // Unknown - skip
   advance();
   return new IdentifierExpr("unknown");
+}
+
+Expression *CppParser::parseStaticCastExpression() {
+  if (match(TokenType::Less)) {
+    int templateDepth = 1;
+    while (!isAtEnd() && templateDepth > 0) {
+      if (match(TokenType::Less)) {
+        templateDepth++;
+      } else if (match(TokenType::Greater)) {
+        templateDepth--;
+      } else {
+        advance();
+      }
+    }
+  }
+
+  Expression *innerExpr = nullptr;
+
+  if (match(TokenType::LeftParen)) {
+    int parenDepth = 1;
+    while (!isAtEnd() && parenDepth > 0) {
+      if (check(TokenType::LeftParen)) {
+        parenDepth++;
+        advance();
+        continue;
+      }
+      if (check(TokenType::RightParen)) {
+        parenDepth--;
+        advance();
+        continue;
+      }
+      if (!innerExpr && check(TokenType::Keyword_New)) {
+        innerExpr = parsePrimary();
+        continue;
+      }
+      advance();
+    }
+  }
+
+  if (innerExpr) {
+    return innerExpr;
+  }
+
+  return new IdentifierExpr("static_cast");
+}
+
+void CppParser::skipEnumDeclaration() {
+  match(TokenType::Keyword_Class);
+  match(TokenType::Keyword_Struct);
+
+  if (check(TokenType::Identifier)) {
+    advance();
+  }
+
+  if (match(TokenType::LeftBrace)) {
+    int braceCount = 1;
+    while (braceCount > 0 && !isAtEnd()) {
+      if (match(TokenType::LeftBrace)) {
+        braceCount++;
+      } else if (match(TokenType::RightBrace)) {
+        braceCount--;
+      } else {
+        advance();
+      }
+    }
+    match(TokenType::Semicolon);
+    return;
+  }
+
+  while (!check(TokenType::Semicolon) && !isAtEnd()) {
+    advance();
+  }
+  match(TokenType::Semicolon);
 }
 
 } // namespace FSMParser

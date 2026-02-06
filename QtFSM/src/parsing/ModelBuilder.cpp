@@ -22,29 +22,10 @@ bool ModelBuilder::isStateClass(const ClassDecl *decl) {
   return decl->name.endsWith("State") && decl->name != "BaseState";
 }
 
-void ModelBuilder::build(const QVector<ASTNode *> &nodes) {
-  QVector<ClassDecl *> classes;
-  QVector<EnumDecl *> enums;
-
-  for (ASTNode *node : nodes) {
-    if (auto *classDecl = dynamic_cast<ClassDecl *>(node)) {
-      classes.append(classDecl);
-    } else if (auto *enumDecl = dynamic_cast<EnumDecl *>(node)) {
-      enums.append(enumDecl);
-    }
-  }
-
-  // First pass: Create states from enums
-  for (EnumDecl *enumDecl : enums) {
-    enumDecl->accept(this);
-  }
-
-  // Second pass: Create all states from classes
+void ModelBuilder::build(const QVector<ClassDecl *> &classes) {
+  // First pass: Create all states
   for (ClassDecl *classDecl : classes) {
     if (isStateClass(classDecl)) {
-      if (m_stateMap.contains(classDecl->name)) {
-        continue;
-      }
       QString stateName = extractStateName(classDecl->name);
       State *state = new State(stateName, stateName, m_fsm);
       m_fsm->addState(state);
@@ -52,7 +33,7 @@ void ModelBuilder::build(const QVector<ASTNode *> &nodes) {
     }
   }
 
-  // Third pass: Extract transitions from handle() methods
+  // Second pass: Extract transitions from handle() methods
   for (ClassDecl *classDecl : classes) {
     if (isStateClass(classDecl)) {
       m_currentState = m_stateMap.value(classDecl->name);
@@ -65,20 +46,6 @@ void ModelBuilder::visitClassDecl(ClassDecl *node) {
   // Visit all methods
   for (FunctionDecl *method : node->methods) {
     method->accept(this);
-  }
-}
-
-void ModelBuilder::visitEnumDecl(EnumDecl *node) {
-  if (node->name != "States") {
-    return;
-  }
-
-  for (const QString &entry : node->enumerators) {
-    if (!m_stateMap.contains(entry)) {
-      State *state = new State(entry, entry, m_fsm);
-      m_fsm->addState(state);
-      m_stateMap.insert(entry, state);
-    }
   }
 }
 
@@ -180,6 +147,12 @@ void ModelBuilder::visitIfStatement(IfStatement *node) {
           }
         }
       }
+    }
+  }
+
+  for (Statement *stmt : node->elseBlock) {
+    if (stmt) {
+      stmt->accept(this);
     }
   }
 }

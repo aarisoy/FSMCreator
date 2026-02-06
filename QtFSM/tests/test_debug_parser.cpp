@@ -45,13 +45,7 @@ public:
 
   // Step 2: Parse
   CppParser parser(tokens);
-  QVector<ASTNode *> nodes = parser.parse();
-  QVector<ClassDecl *> classes;
-  for (ASTNode *node : nodes) {
-    if (auto *classDecl = dynamic_cast<ClassDecl *>(node)) {
-      classes.append(classDecl);
-    }
-  }
+  QVector<ClassDecl *> classes = parser.parse();
 
   EXPECT_FALSE(parser.hasError()) << "Parser should not have errors. Error: "
                                   << parser.errorMessage().toStdString();
@@ -78,7 +72,7 @@ public:
     }
   }
 
-  qDeleteAll(nodes);
+  qDeleteAll(classes);
 }
 
 TEST(ParserDebugTest, VerifyFunctionParsing) {
@@ -100,13 +94,7 @@ TEST(ParserDebugTest, VerifyFunctionParsing) {
   Lexer lexer(testCode);
   QVector<Token> tokens = lexer.tokenize();
   CppParser parser(tokens);
-  QVector<ASTNode *> nodes = parser.parse();
-  QVector<ClassDecl *> classes;
-  for (ASTNode *node : nodes) {
-    if (auto *classDecl = dynamic_cast<ClassDecl *>(node)) {
-      classes.append(classDecl);
-    }
-  }
+  QVector<ClassDecl *> classes = parser.parse();
 
   EXPECT_FALSE(parser.hasError())
       << "Parser error: " << parser.errorMessage().toStdString();
@@ -137,7 +125,7 @@ TEST(ParserDebugTest, VerifyFunctionParsing) {
   // Test Model Building
   FSM fsm;
   ModelBuilder builder(&fsm);
-  builder.build(nodes);
+  builder.build(classes);
 
   State *state = fsm.stateById("Param"); // "ParamState" -> "Param"
   ASSERT_NE(state, nullptr);
@@ -148,5 +136,5 @@ TEST(ParserDebugTest, VerifyFunctionParsing) {
   // Reconstructed signature: "void customFunc(int x, float y)"
   EXPECT_EQ(funcs[0], "void customFunc(int x, float y)");
 
-  qDeleteAll(nodes);
+  qDeleteAll(classes);
 }

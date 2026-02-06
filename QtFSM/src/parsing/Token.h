@@ -23,6 +23,7 @@ enum class TokenType {
   Keyword_Void,
   Keyword_Auto,
   Keyword_StaticCast,
+  Keyword_Final,
 
   // Identifiers and Literals
   Identifier,
@@ -73,6 +74,7 @@ struct Token {
 
   bool isKeyword() const {
     return type >= TokenType::Keyword_Class &&
+           type <= TokenType::Keyword_Final;
            type <= TokenType::Keyword_StaticCast;
   }
 

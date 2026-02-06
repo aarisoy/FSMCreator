@@ -418,6 +418,9 @@ FunctionDecl *CppParser::parseFunction() {
   if (match(TokenType::Keyword_Override)) {
     func->isOverride = true;
   }
+  if (match(TokenType::Keyword_Final)) {
+    func->isFinal = true;
+  }
 
   // {
   if (!match(TokenType::LeftBrace)) {

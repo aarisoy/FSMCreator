@@ -112,6 +112,7 @@ public:
   QVector<Statement *> body;
   bool isVirtual = false;
   bool isOverride = false;
+  bool isFinal = false;
 
   FunctionDecl(const QString &ret, const QString &n)
       : returnType(ret), name(n) {}

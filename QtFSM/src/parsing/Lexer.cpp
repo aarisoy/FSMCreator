@@ -22,6 +22,7 @@ void Lexer::initKeywords() {
   m_keywords["void"] = TokenType::Keyword_Void;
   m_keywords["auto"] = TokenType::Keyword_Auto;
   m_keywords["static_cast"] = TokenType::Keyword_StaticCast;
+  m_keywords["final"] = TokenType::Keyword_Final;
 }
 
 QChar Lexer::peek() const {

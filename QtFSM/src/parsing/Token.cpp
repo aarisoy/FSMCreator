@@ -38,6 +38,8 @@ QString Token::typeName() const {
     return "auto";
   case TokenType::Keyword_StaticCast:
     return "static_cast";
+  case TokenType::Keyword_Final:
+    return "final";
   case TokenType::Identifier:
     return "identifier";
   case TokenType::StringLiteral:

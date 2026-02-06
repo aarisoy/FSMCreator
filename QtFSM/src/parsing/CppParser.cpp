@@ -316,6 +316,28 @@ QString CppParser::parseQualifiedType() {
     result += advance().value;
   }
 
+  if (match(TokenType::Less)) {
+    result += "<";
+    int templateDepth = 1;
+    while (!isAtEnd() && templateDepth > 0) {
+      if (match(TokenType::Less)) {
+        result += "<";
+        templateDepth++;
+        continue;
+      }
+      if (match(TokenType::Greater)) {
+        result += ">";
+        templateDepth--;
+        continue;
+      }
+      Token tok = advance();
+      result += tok.value;
+      if (tok.type == TokenType::Comma) {
+        result += " ";
+      }
+    }
+  }
+
   // Handle const after type (e.g., MyClass* const)
   if (match(TokenType::Keyword_Const)) {
     result += " const";
@@ -481,8 +503,7 @@ IfStatement *CppParser::parseIfStatement() {
       if (elseIf) {
         ifStmt->elseBlock.append(elseIf);
       }
-    } else {
-      consume(TokenType::LeftBrace, "Expected '{' after else");
+    } else if (match(TokenType::LeftBrace)) {
       while (!check(TokenType::RightBrace) && !isAtEnd()) {
         Statement *stmt = parseStatement();
         if (stmt) {
@@ -490,6 +511,11 @@ IfStatement *CppParser::parseIfStatement() {
         }
       }
       consume(TokenType::RightBrace, "Expected '}' after else body");
+    } else {
+      Statement *stmt = parseStatement();
+      if (stmt) {
+        ifStmt->elseBlock.append(stmt);
+      }
     }
   }
 

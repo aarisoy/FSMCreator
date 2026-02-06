@@ -10,10 +10,10 @@ class FSM;
  * @brief The CodeGenerator class is responsible for converting the FSM model
  * into C++ source code.
  *
- * It implements the logic to generate a complete C++ implementation of the
- * State Pattern corresponding to the current visual model. It generates both
- * the header and source code (returned as a single string or managed
- * otherwise).
+ * It implements the logic to generate a complete C++ config-driven FSM
+ * runtime and the FSMConfig data from the current visual model. The generated
+ * output is a single C++ translation unit that contains the config structures,
+ * a minimal runtime, and a sample usage snippet.
  *
  * @ingroup Codegen
  */
@@ -48,6 +48,13 @@ private:
    * @return The sanitized identifier.
    */
   QString sanitizeName(const QString &name);
+
+  /**
+   * @brief Escapes a string for use in a C++ string literal.
+   * @param value The raw string.
+   * @return Escaped string without surrounding quotes.
+   */
+  QString escapeStringLiteral(const QString &value);
 };
 
 #endif // CODEGENERATOR_H

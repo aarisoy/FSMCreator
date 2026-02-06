@@ -7,7 +7,7 @@ class QTextEdit;
 class FSM;
 
 /**
- * @brief The CodePreviewPanel class - Shows generated C++ code in real-time
+ * @brief The CodePreviewPanel class - Shows generated C++ config in real-time
  */
 class CodePreviewPanel : public QWidget {
   Q_OBJECT

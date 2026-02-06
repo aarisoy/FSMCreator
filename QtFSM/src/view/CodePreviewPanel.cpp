@@ -16,15 +16,15 @@ CodePreviewPanel::CodePreviewPanel(QWidget *parent)
 
   // Title bar with controls
   QHBoxLayout *titleLayout = new QHBoxLayout();
-  QLabel *titleLabel = new QLabel("Generated C++ Code", this);
+  QLabel *titleLabel = new QLabel("Generated C++ Config", this);
   QFont titleFont = titleLabel->font();
   titleFont.setPointSize(11);
   titleFont.setBold(true);
   titleLabel->setFont(titleFont);
 
   // Generate Code Button ( Manual Trigger )
-  QPushButton *generateBtn = new QPushButton("Generate Code ->", this);
-  generateBtn->setToolTip("Generate C++ code from current FSM model");
+  QPushButton *generateBtn = new QPushButton("Generate Config ->", this);
+  generateBtn->setToolTip("Generate C++ config from current FSM model");
   connect(generateBtn, &QPushButton::clicked, this,
           &CodePreviewPanel::generateCodeRequested);
 

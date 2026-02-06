@@ -5,14 +5,14 @@
 ![Qt](https://img.shields.io/badge/Qt-6.5+-success)
 ![C++](https://img.shields.io/badge/C++-17-blue)
 
-A professional-grade, bidirectional Finite State Machine (FSM) tool designed to bridge the gap between visual design and robust C++ implementation. QtFSM allows developers to generate production-ready C++ State pattern code from visual diagrams and, uniquely, reverse-engineer diagrams from existing C++ FSM code.
+A professional-grade, bidirectional Finite State Machine (FSM) tool designed to bridge the gap between visual design and robust C++ implementation. QtFSM allows developers to generate production-ready **config-based C++ FSM runtimes** from visual diagrams and, uniquely, reverse-engineer diagrams from the generated C++ config.
 
 ## 🌟 Key Features
 
 - **🎨 Visual FSM Editor**: deeply integrated, drag-and-drop canvas for designing complex state machines.
 - **🔄 Bidirectional Engineering**:
-    - **Forward**: Generate compliant C++ State Pattern code.
-    - **Reverse**: Import existing C++ headers/sources to visualize FSM logic.
+    - **Forward**: Generate compliant C++ config + runtime.
+    - **Reverse**: Import generated C++ config to visualize FSM logic.
 - **🏗️ Solid Architecture**: Built on a strict **MVVM (Model-View-ViewModel)** architecture ensuring separation of concerns.
 - **↩️ Robust Undo/Redo**: Command-based history system for all edit operations.
 - **💾 Persistence**: JSON-based project format for saving and sharing designs.
@@ -35,7 +35,7 @@ We chose MVVM to decouple the UI (View) from the business logic (Model).
 ### Design Patterns Used
 
 - **Command Pattern**: Used for the Undo/Redo system. Every action (Move State, Add Transition, etc.) is encapsulated as a `QUndoCommand`.
-- **State Pattern**: The code generator creates code following the standard GoF State Pattern.
+- **Interpreter Pattern**: The code generator emits config + a small runtime that interprets transitions at runtime.
 - **Observer Pattern**: Heavily used via Qt's Signals/Slots for data binding between ViewModel and View.
 - **Factory Pattern**: Used in formatting and parsing logic.
 
@@ -50,8 +50,8 @@ The codebase is organized into distinct modules:
 | **`src/model`** | Core data entities (`State`, `Transition`, `FSM`). Independent of UI. |
 | **`src/view`** | GUI components, Dialogs, and Graphics Items (`StateItem`, `TransitionItem`). |
 | **`src/viewmodel`** | Logic controllers (`MainViewModel`, `DiagramViewModel`) managing application state. Includes **Commands**. |
-| **`src/parsing`** | Clang/Regex-based C++ parsers to reconstruct FSMs from code. |
-| **`src/codegen`** | Template-based C++ code generators. |
+| **`src/parsing`** | Strict config-based C++ parser to reconstruct FSMs from generated code. |
+| **`src/codegen`** | C++ config + runtime generator. |
 | **`src/serialization`** | JSON serializers/deserializers for project persistence. |
 
 ---
@@ -95,7 +95,7 @@ cmake --build build --config Debug
 
 1. **Design**: Launch the app and use the toolbar to add States. Drag between states to create Transitions.
 2. **Configure**: Click on a State or Transition to edit its properties (Name, Entry/Exit Actions, Guard Conditions) in the side panel.
-3. **Generate**: Go to **Tools > Generate Code** to export your FSM as C++ classes.
+3. **Generate**: Go to **Tools > Generate Code** to export your FSM as C++ config + runtime.
 4. **Iterate**: Save your project (`.fsm.json`) and return later to make changes.
 
 ---

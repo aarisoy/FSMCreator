@@ -1,38 +1,17 @@
 # Parsing Module
 
-The **Parsing** module is responsible for reading existing C++ source code and reconstructing the FSM model from it (Reverse Engineering). It implements a hand-written parser specific to the C++ State Pattern logic used by this application.
+The **Parsing** module is responsible for reading generated **C++ config** and reconstructing the FSM model (Reverse Engineering).
 
-## Key Classes
+## Overview
 
-### [CodeParser](CodeParser.h)
-The abstract base interface for parsing.
+`CodeParser` performs a strict parse of the C++ config format emitted by `CodeGenerator`. It extracts:
 
-### [CppParser](CppParser.h)
-The main driver class that orchestrates the parsing process. It uses the `Lexer` to get tokens and the `ModelBuilder` to construct the FSM.
+- `cfg.initial`
+- `cfg.states["..."] = StateConfig{ ... }` entries
+- Transition lists inside each state
 
-### [Lexer](Lexer.h)
-Performs lexical analysis on the raw C++ source string, converting it into a stream of `Token`s. It handles C++ keywords, identifiers, operators, and symbols.
+This ensures round-trip stability between the visual model and the generated config.
 
-### [Token](Token.h)
-Represents a single unit of lexical meaning (e.g., `CLASS`, `IDENTIFIER`, `LBRACE`).
+## Notes
 
-### [AST](AST.h)
-Classes representing the Abstract Syntax Tree nodes (e.g., `ClassNode`, `FunctionNode`, `StateNode`).
-- **TranslationUnit**: The root node.
-- **ClassDecl**: Represents a class declaration.
-- **FunctionDecl**: Represents a function.
-
-### [ModelBuilder](ModelBuilder.h)
-Visits the AST or processes parsed data to instantiate `State` and `Transition` objects in the `FSM` model.
-
-## Parsing Flow
-
-```mermaid
-graph LR
-    A[Source Code] --> B[Lexer];
-    B --> C[Tokens];
-    C --> D[CppParser];
-    D --> E[AST];
-    E --> F[ModelBuilder];
-    F --> G[FSM Model];
-```
+Lower-level legacy parsing helpers (`Lexer`, `CppParser`, `ModelBuilder`) remain in the codebase for experimentation and diagnostics, but the application now parses only the config-based format.

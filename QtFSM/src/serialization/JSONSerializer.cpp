@@ -128,7 +128,8 @@ FSM *JSONSerializer::load(const QString &filepath) {
     State *state = new State(stateId, stateName, fsm);
 
     // Load state flags
-    state->setInitial(stateObj.value("isInitial").toBool(false));
+    bool isInitial = stateObj.value("isInitial").toBool(false);
+    state->setInitial(isInitial);
     state->setFinal(stateObj.value("isFinal").toBool(false));
 
     // Load position (defaults to 0,0 if not present)
@@ -149,6 +150,9 @@ FSM *JSONSerializer::load(const QString &filepath) {
     stateMapById[state->id()] = state;
     stateMapByName[state->name()] = state;
     fsm->addState(state);
+    if (isInitial) {
+      fsm->setInitialState(state);
+    }
   }
 
   // Load transitions

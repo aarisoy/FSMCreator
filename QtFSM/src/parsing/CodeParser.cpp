@@ -1,18 +1,12 @@
 #include "CodeParser.h"
-#include "../model/Event.h"
 #include "../model/FSM.h"
 #include "../model/State.h"
 #include "../model/Transition.h"
 
-// New parser system
-#include "CppParser.h"
-#include "Lexer.h"
-#include "ModelBuilder.h"
-
-#include <QDebug>
+#include <QMap>
+#include <QPointF>
 #include <QRegularExpression>
-
-using namespace FSMParser;
+#include <QVector>
 
 CodeParser::CodeParser() {}
 
@@ -26,63 +20,112 @@ FSM *CodeParser::parse(const QString &code, QObject *parent) {
 
   FSM *fsm = new FSM(parent);
 
-  // 1. Try to find FSM name
-  // Pattern: class Name : public State/FSM ...
-  // For now detailed parsing is limited, so we'll look for simple patterns
-  // matching the code we generate
+  // Optional: parse FSM name from header comment
+  QRegularExpression nameRe(
+      R"(//\s*Auto-generated FSM Config\s*-\s*(.+))");
+  QRegularExpressionMatch nameMatch = nameRe.match(code);
+  if (nameMatch.hasMatch()) {
+    fsm->setName(nameMatch.captured(1).trimmed());
+  }
 
-  // Parse States
-  // Use new lexer-parser-AST system
-  try {
-    // Step 1: Tokenize
-    Lexer lexer(code);
-    QVector<Token> tokens = lexer.tokenize();
+  // Parse initial state ID
+  QRegularExpression initialRe(
+      R"CFG(cfg\.initial\s*=\s*"([^"]*)"\s*;)CFG");
+  QRegularExpressionMatch initialMatch = initialRe.match(code);
+  if (!initialMatch.hasMatch()) {
+    m_lastError = "Missing cfg.initial assignment";
+    delete fsm;
+    return nullptr;
+  }
+  QString initialId = initialMatch.captured(1);
 
-    // Debug: Show first tokens
-    // Debug: Show middle tokens
-    qDebug() << "=== Tokens 30-100 ===";
-    for (int i = 30; i < qMin(100, tokens.size()); i++) {
-      qDebug().nospace() << "[" << i << "] Line " << tokens[i].line << ": "
-                         << tokens[i].typeName() << " = '" << tokens[i].value
-                         << "'";
+  struct TransitionSpec {
+    QString sourceId;
+    QString event;
+    QString targetId;
+    QString guard;
+    QString action;
+  };
+  QVector<TransitionSpec> transitions;
+
+  // Parse state configs (strict format)
+  QRegularExpression stateRe(
+      R"CFG(cfg\.states\["([^"]*)"\]\s*=\s*StateConfig\{\s*"([^"]*)"\s*,\s*([-\d\.]+)\s*,\s*([-\d\.]+)\s*,\s*(true|false)\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*\{(.*?)\}\s*\};)CFG",
+      QRegularExpression::DotMatchesEverythingOption);
+
+  QRegularExpressionMatchIterator stateIt = stateRe.globalMatch(code);
+  QMap<QString, State *> stateMap;
+  bool anyState = false;
+
+  while (stateIt.hasNext()) {
+    anyState = true;
+    QRegularExpressionMatch match = stateIt.next();
+    QString stateId = match.captured(1);
+    QString stateName = match.captured(2);
+    double posX = match.captured(3).toDouble();
+    double posY = match.captured(4).toDouble();
+    bool isFinal = (match.captured(5) == "true");
+    QString entry = match.captured(6);
+    QString exit = match.captured(7);
+    QString transitionsBlock = match.captured(8);
+
+    State *state = new State(stateId, stateName, fsm);
+    state->setPosition(QPointF(posX, posY));
+    state->setFinal(isFinal);
+    state->setEntryAction(entry);
+    state->setExitAction(exit);
+    fsm->addState(state);
+    stateMap.insert(stateId, state);
+
+    // Parse transitions inside this state
+    QRegularExpression transRe(
+        R"CFG(\{\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\})CFG");
+    QRegularExpressionMatchIterator transIt =
+        transRe.globalMatch(transitionsBlock);
+    while (transIt.hasNext()) {
+      QRegularExpressionMatch tmatch = transIt.next();
+      TransitionSpec spec;
+      spec.sourceId = stateId;
+      spec.event = tmatch.captured(1);
+      spec.targetId = tmatch.captured(2);
+      spec.guard = tmatch.captured(3);
+      spec.action = tmatch.captured(4);
+      transitions.append(spec);
     }
+  }
 
-    // Step 2: Parse to AST
-    CppParser parser(tokens);
-    QVector<ClassDecl *> classes = parser.parse();
-
-    if (parser.hasError()) {
-      m_lastError = "Parser error: " + parser.errorMessage();
-      qDebug() << m_lastError;
-      qDeleteAll(classes);
-      delete fsm;
-      return nullptr;
-    }
-
-    // Step 3: Build FSM model from AST
-    ModelBuilder builder(fsm);
-    builder.build(classes);
-
-    // Cleanup AST
-    qDeleteAll(classes);
-
-    qDebug() << "✅ New parser: Parsed" << fsm->states().size() << "states";
-    for (State *state : fsm->states()) {
-      qDebug() << "  State:" << state->name() << "with"
-               << state->transitions().size() << "transitions";
-    }
-
-  } catch (...) {
-    m_lastError = "Parser exception";
+  if (!anyState) {
+    m_lastError = "No StateConfig entries found";
     delete fsm;
     return nullptr;
   }
 
-  // Set first found state as initial
-  if (!fsm->states().isEmpty()) {
-    fsm->setInitialState(fsm->states().first());
-    fsm->states().first()->setInitial(true);
+  // Build transitions
+  for (const TransitionSpec &spec : transitions) {
+    State *source = stateMap.value(spec.sourceId);
+    State *target = stateMap.value(spec.targetId);
+    if (!source || !target) {
+      m_lastError = "Transition references unknown state ID";
+      delete fsm;
+      return nullptr;
+    }
+
+    Transition *transition = new Transition(source, target, fsm);
+    transition->setEvent(spec.event);
+    transition->setGuard(spec.guard);
+    transition->setAction(spec.action);
+    fsm->addTransition(transition);
   }
+
+  // Set initial state
+  State *initial = stateMap.value(initialId);
+  if (!initial) {
+    m_lastError = "Initial state ID not found";
+    delete fsm;
+    return nullptr;
+  }
+  initial->setInitial(true);
+  fsm->setInitialState(initial);
 
   return fsm;
 }

@@ -8,11 +8,10 @@ class QObject;
 
 /**
  * @brief The CodeParser class represents the high-level interface for parsing
- * C++ code.
+ * config-based C++ code.
  *
- * It acts as a facade, coordinating the `Lexer`, `CppParser`, and
- * `ModelBuilder` to transform raw source code into a fully populated @ref FSM
- * object.
+ * It parses the strict C++ config format emitted by the CodeGenerator and
+ * reconstructs a fully populated @ref FSM object (including UI positions).
  *
  * @ingroup Parsing
  */
@@ -24,10 +23,10 @@ public:
   CodeParser();
 
   /**
-   * @brief Parses the provided C++ source code to reconstruct an FSM.
+   * @brief Parses the provided C++ config code to reconstruct an FSM.
    *
-   * This method tokenizes the code, parses it into an AST, and then
-   * builds the FSM model from the AST.
+   * This method expects the exact layout produced by the config-based
+   * CodeGenerator (cfg.initial and StateConfig assignments).
    *
    * @param code The C++ source code string to parse.
    * @param parent The parent QObject for the new FSM (for memory management).

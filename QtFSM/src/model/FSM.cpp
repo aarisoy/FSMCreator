@@ -76,6 +76,9 @@ void FSM::removeStateWithoutDelete(State *state) {
   // Remove collected transitions (but don't delete them - command owns them)
   for (Transition *trans : transitionsToRemove) {
     m_transitions.removeOne(trans);
+    if (trans->sourceState()) {
+      trans->sourceState()->removeTransition(trans);
+    }
     emit transitionRemoved(trans);
   }
 
@@ -105,6 +108,9 @@ void FSM::addTransition(Transition *transition) {
   if (transition && !m_transitions.contains(transition)) {
     m_transitions.append(transition);
     transition->setParent(this);
+    if (transition->sourceState()) {
+      transition->sourceState()->addTransition(transition);
+    }
     emit transitionAdded(transition);
     emit modified();
   }
@@ -112,6 +118,9 @@ void FSM::addTransition(Transition *transition) {
 
 void FSM::removeTransition(Transition *transition) {
   if (m_transitions.removeOne(transition)) {
+    if (transition->sourceState()) {
+      transition->sourceState()->removeTransition(transition);
+    }
     emit transitionRemoved(transition);
     emit modified();
     transition->deleteLater();

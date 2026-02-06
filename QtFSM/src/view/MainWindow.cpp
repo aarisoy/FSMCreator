@@ -93,7 +93,7 @@ void MainWindow::createActions() {
 
   // Import C++ action
   m_importCppAction = new QAction(tr("Import C&++..."), this);
-  m_importCppAction->setStatusTip(tr("Import FSM from C++ code file"));
+  m_importCppAction->setStatusTip(tr("Import FSM from C++ config file"));
   connect(m_importCppAction, &QAction::triggered, this, &MainWindow::importCpp);
 
   // Save action
@@ -103,9 +103,9 @@ void MainWindow::createActions() {
   connect(m_saveAction, &QAction::triggered, this, &MainWindow::saveProject);
 
   // Export C++ action
-  m_exportAction = new QAction(tr("Export C++..."), this);
+  m_exportAction = new QAction(tr("Export C++ Config..."), this);
   m_exportAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
-  m_exportAction->setStatusTip(tr("Generate C++ code from the FSM"));
+  m_exportAction->setStatusTip(tr("Generate C++ config from the FSM"));
   connect(m_exportAction, &QAction::triggered, this, &MainWindow::exportCpp);
 
   // Export JSON action
@@ -239,7 +239,7 @@ void MainWindow::createDockWidgets() {
 
   // Code preview dock widget (bottom)
   QDockWidget *codePreviewDock =
-      new QDockWidget(tr("Generated C++ Code"), this);
+      new QDockWidget(tr("Generated C++ Config"), this);
   codePreviewDock->setWidget(m_codePreviewPanel);
   addDockWidget(Qt::BottomDockWidgetArea, codePreviewDock);
 
@@ -343,7 +343,7 @@ void MainWindow::importCpp() {
     return;
   }
 
-  // Read the C++ code
+  // Read the C++ config code
   QString cppCode = file.readAll();
   file.close();
 
@@ -351,7 +351,7 @@ void MainWindow::importCpp() {
   m_codePreviewPanel->setCode(cppCode);
 
   statusBar()->showMessage(
-      tr("C++ code loaded. Click 'Update Diagram' to parse."), 5000);
+      tr("C++ config loaded. Click 'Update Diagram' to parse."), 5000);
 }
 
 void MainWindow::saveProject() {
@@ -427,14 +427,14 @@ void MainWindow::exportCpp() {
   }
 
   QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Export C++ Code"), "",
+      this, tr("Export C++ Config"), "",
       tr("C++ Header Files (*.h);;C++ Source Files (*.cpp);;All Files (*)"));
 
   if (fileName.isEmpty()) {
     return;
   }
 
-  // Generate C++ code
+  // Generate C++ config
   CodeGenerator generator;
   QString code = generator.generate(m_diagramEditor->fsm());
 
@@ -451,13 +451,13 @@ void MainWindow::exportCpp() {
   out << code;
   file.close();
 
-  statusBar()->showMessage(tr("Exported C++ code to: %1").arg(fileName));
+  statusBar()->showMessage(tr("Exported C++ config to: %1").arg(fileName));
 
   // Show success message
   QMessageBox::information(
       this, tr("Export Complete"),
-      tr("C++ code has been generated successfully!\n\nFile: %1\n\nYou can now "
-         "compile this code with your C++ project.")
+      tr("C++ config has been generated successfully!\n\nFile: %1\n\nYou can "
+         "now compile this code with your C++ project.")
           .arg(fileName));
 }
 

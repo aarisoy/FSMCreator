@@ -166,6 +166,7 @@ void ModelBuilder::visitReturnStatement(ReturnStatement *node) {
 void ModelBuilder::visitIdentifierExpr(IdentifierExpr *node) {
   // Could be part of event or state name
   // Context determines meaning
+  Q_UNUSED(node);
 }
 
 void ModelBuilder::visitStringLiteralExpr(StringLiteralExpr *node) {
@@ -180,18 +181,34 @@ void ModelBuilder::visitStringLiteralExpr(StringLiteralExpr *node) {
 
 void ModelBuilder::visitBinaryExpr(BinaryExpr *node) {
   // Visit both sides to extract event names
+  QString leftEvent;
+  QString rightEvent;
+
   if (node->left) {
+    m_currentEventName.clear();
     node->left->accept(this);
+    leftEvent = m_currentEventName;
   }
+
   if (node->right) {
+    m_currentEventName.clear();
     node->right->accept(this);
+    rightEvent = m_currentEventName;
+  }
+
+  if (!rightEvent.isEmpty() && (leftEvent.isEmpty() || leftEvent == "type")) {
+    m_currentEventName = rightEvent;
+  } else if (!leftEvent.isEmpty()) {
+    m_currentEventName = leftEvent;
+  } else {
+    m_currentEventName = rightEvent;
   }
 }
 
 void ModelBuilder::visitMemberAccessExpr(MemberAccessExpr *node) {
   // Could be event.type - visit to extract context
-  if (node->object) {
-    node->object->accept(this);
+  if (m_currentEventName.isEmpty() && node) {
+    m_currentEventName = node->member;
   }
 }
 

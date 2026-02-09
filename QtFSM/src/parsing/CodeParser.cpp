@@ -7,6 +7,9 @@
 // New parser system
 #include "CppParser.h"
 #include "Lexer.h"
+#if defined(FSM_ENABLE_LIBCLANG)
+#include "LibClangParser.h"
+#endif
 #include "ModelBuilder.h"
 
 #include <QDebug>
@@ -31,32 +34,47 @@ FSM *CodeParser::parse(const QString &code, QObject *parent) {
   // For now detailed parsing is limited, so we'll look for simple patterns
   // matching the code we generate
 
-  // Parse States
-  // Use new lexer-parser-AST system
   try {
-    // Step 1: Tokenize
-    Lexer lexer(code);
-    QVector<Token> tokens = lexer.tokenize();
-
-    // Debug: Show first tokens
-    // Debug: Show middle tokens
-    qDebug() << "=== Tokens 30-100 ===";
-    for (int i = 30; i < qMin(100, tokens.size()); i++) {
-      qDebug().nospace() << "[" << i << "] Line " << tokens[i].line << ": "
-                         << tokens[i].typeName() << " = '" << tokens[i].value
-                         << "'";
+    QVector<ClassDecl *> classes;
+#if defined(FSM_ENABLE_LIBCLANG)
+    const QByteArray useLibclang = qgetenv("FSM_USE_LIBCLANG");
+    if (!useLibclang.isEmpty() && useLibclang != "0") {
+      LibClangParser parser;
+      classes = parser.parse(code);
+      if (!parser.lastError().isEmpty()) {
+        m_lastError = "libclang parser error: " + parser.lastError();
+        qDebug() << m_lastError;
+        qDeleteAll(classes);
+        delete fsm;
+        return nullptr;
+      }
     }
+#endif
 
-    // Step 2: Parse to AST
-    CppParser parser(tokens);
-    QVector<ClassDecl *> classes = parser.parse();
+    if (classes.isEmpty()) {
+      // Step 1: Tokenize
+      Lexer lexer(code);
+      QVector<Token> tokens = lexer.tokenize();
 
-    if (parser.hasError()) {
-      m_lastError = "Parser error: " + parser.errorMessage();
-      qDebug() << m_lastError;
-      qDeleteAll(classes);
-      delete fsm;
-      return nullptr;
+      // Debug: Show middle tokens
+      qDebug() << "=== Tokens 30-100 ===";
+      for (int i = 30; i < qMin(100, tokens.size()); i++) {
+        qDebug().nospace() << "[" << i << "] Line " << tokens[i].line << ": "
+                           << tokens[i].typeName() << " = '" << tokens[i].value
+                           << "'";
+      }
+
+      // Step 2: Parse to AST
+      CppParser parser(tokens);
+      classes = parser.parse();
+
+      if (parser.hasError()) {
+        m_lastError = "Parser error: " + parser.errorMessage();
+        qDebug() << m_lastError;
+        qDeleteAll(classes);
+        delete fsm;
+        return nullptr;
+      }
     }
 
     // Step 3: Build FSM model from AST

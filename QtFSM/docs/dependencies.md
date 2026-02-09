@@ -62,6 +62,24 @@ One of the following C++17 compatible compilers:
 - **cppcheck**: Additional static analysis
   - Linux: `sudo apt install cppcheck`
 
+### Parsing Tooling (Optional)
+
+- **libclang**: C/C++ parsing backend for future parsing tooling.
+  - Requires libclang headers (`clang-c/Index.h`) and the shared library.
+  - Recommended setup uses a local virtual environment for the shared library
+    and a dedicated folder to stage it:
+    ```bash
+    ./scripts/setup_libclang_env.sh
+    source .venv/bin/activate
+    export CLANG_LIBRARY_PATH="$(pwd)/third_party/libclang"
+    ```
+  - Then configure with:
+    ```bash
+    cmake -B build -DFSM_ENABLE_LIBCLANG=ON \
+      -DLIBCLANG_INCLUDE_DIR=/path/to/clang/include \
+      -DLIBCLANG_LIBRARY="$(pwd)/third_party/libclang/libclang.so"
+    ```
+
 ### Debugging Tools
 
 - **GDB**: GNU Debugger

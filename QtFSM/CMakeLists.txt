@@ -10,6 +10,9 @@ set(CMAKE_AUTOUIC ON)
 # Find Qt6 packages
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
+# Optional libclang support for parsing
+option(FSM_ENABLE_LIBCLANG "Enable libclang-based parsing backend" OFF)
+
 # Add Google Test
 include(FetchContent)
 FetchContent_Declare(
@@ -96,8 +99,15 @@ set(CODEGEN_HEADERS
     src/parsing/Token.h
     src/parsing/CppParser.h
     src/parsing/AST.h
+    src/parsing/LibClangParser.h
     src/parsing/ModelBuilder.h
 )
+
+if(FSM_ENABLE_LIBCLANG)
+    list(APPEND CODEGEN_SOURCES src/parsing/LibClangParser.cpp)
+else()
+    list(APPEND CODEGEN_SOURCES src/parsing/LibClangParserStub.cpp)
+endif()
 
 set(SERIALIZATION_SOURCES
     src/serialization/JSONSerializer.cpp
@@ -211,6 +221,44 @@ add_executable(test_debug_parser tests/test_debug_parser.cpp
 )
 target_link_libraries(test_debug_parser PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
 target_include_directories(test_debug_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# libclang Parser Test
+add_executable(test_libclang_parser tests/test_libclang_parser.cpp
+    ${MODEL_SOURCES} ${MODEL_HEADERS}
+    ${PARSING_SOURCES} ${PARSING_HEADERS}
+    ${CODEGEN_SOURCES} ${CODEGEN_HEADERS}
+    ${SERIALIZATION_SOURCES} ${SERIALIZATION_HEADERS}
+)
+target_link_libraries(test_libclang_parser PRIVATE Qt6::Core GTest::gtest GTest::gtest_main)
+target_include_directories(test_libclang_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# libclang integration (optional)
+if(FSM_ENABLE_LIBCLANG)
+    find_path(LIBCLANG_INCLUDE_DIR clang-c/Index.h)
+    find_library(LIBCLANG_LIBRARY clang)
+
+    if(LIBCLANG_INCLUDE_DIR AND LIBCLANG_LIBRARY)
+        set(LIBCLANG_TARGETS
+            QtFSM
+            test_stress
+            test_user_code
+            test_json
+            test_lexer
+            test_parser
+            test_debug_parser
+            test_libclang_parser
+        )
+        foreach(target_name IN LISTS LIBCLANG_TARGETS)
+            if(TARGET ${target_name})
+                target_compile_definitions(${target_name} PRIVATE FSM_ENABLE_LIBCLANG)
+                target_include_directories(${target_name} PRIVATE ${LIBCLANG_INCLUDE_DIR})
+                target_link_libraries(${target_name} PRIVATE ${LIBCLANG_LIBRARY})
+            endif()
+        endforeach()
+    else()
+        message(WARNING "FSM_ENABLE_LIBCLANG is ON but libclang was not found.")
+    endif()
+endif()
 
 # Installation
 install(TARGETS QtFSM

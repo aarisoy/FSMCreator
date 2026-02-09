@@ -63,6 +63,7 @@ The codebase is organized into distinct modules:
 - **Qt 6.5+** (Core, Gui, Widgets)
 - **CMake 3.16+**
 - **C++17 Compiler** (GCC 9+, Clang 10+, MSVC 2019+)
+- **Optional libclang tooling** (for parsing workflows): `./scripts/setup_libclang_env.sh`
 
 ### Build Instructions
 

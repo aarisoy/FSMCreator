@@ -19,7 +19,7 @@ flowchart LR
 | Component | Class | Responsibility |
 |-----------|-------|----------------|
 | **Lexer** | `Lexer` | Breaks raw text into meaningful symbols (Tokens). |
-| **Parser** | `CppParser` | Analyzes tokens to build a structural representation (AST). |
+| **Parser** | `CppParser` / `LibClangParser` | Builds the AST either via the handwritten parser or libclang. |
 | **AST** | `ClassDecl`, `FunctionDecl`, etc. | Abstract Syntax Tree representing C++ structures. |
 | **Builder** | `ModelBuilder` | Traverses the AST and populates the `FSM` / `State` model. |
 
@@ -60,6 +60,37 @@ A **Recursive Descent Parser** that turns Tokens into an AST.
 ### Error Handling
 - Uses `peek()`, `check()`, and `consume()` helpers to navigate the token stream.
 - Resilient to some syntax errors but expects reasonably valid C++ structure.
+
+## 3.1 Optional: libclang Parser (`LibClangParser.h/cpp`)
+`LibClangParser` uses **libclang** to build the same lightweight AST that
+`ModelBuilder` expects. This makes parsing more tolerant of real-world C++
+syntax (macros, nested scopes, etc.), while still mapping the result into the
+QtFSM-specific AST nodes.
+
+### How it works
+- Parse the source into a clang translation unit.
+- Walk `ClassDecl` / `CXXMethod` cursors to build `ClassDecl` and
+  `FunctionDecl` nodes.
+- Walk statement cursors (`IfStmt`, `ReturnStmt`) and expression cursors
+  (`BinaryOperator`, `MemberRefExpr`, `CallExpr`, `StringLiteral`,
+  `CXXNewExpr`, `IntegerLiteral`, `CXXBoolLiteralExpr`) to build the simplified
+  AST that `ModelBuilder` already understands, including qualified enum names
+  such as `EventType::Timeout`.
+
+### Enabling libclang
+1. Install libclang headers + library (or point CMake to them).
+2. Configure and build with:
+   ```bash
+   cmake -B build -DFSM_ENABLE_LIBCLANG=ON
+   cmake --build build
+   ```
+3. Run the app or tests with:
+   ```bash
+   FSM_USE_LIBCLANG=1 ./build/QtFSM
+   ```
+
+If the environment variable is unset, the parser falls back to the handwritten
+lexer/parser implementation.
 
 ## 4. The Model Builder (`ModelBuilder.h/cpp`)
 The semantic bridge between the raw AST and the QtFSM Application Model.

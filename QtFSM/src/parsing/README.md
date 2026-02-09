@@ -10,6 +10,11 @@ The abstract base interface for parsing.
 ### [CppParser](CppParser.h)
 The main driver class that orchestrates the parsing process. It uses the `Lexer` to get tokens and the `ModelBuilder` to construct the FSM.
 
+### [LibClangParser](LibClangParser.h)
+Optional libclang-backed parser that builds the same lightweight AST using
+clang's cursor APIs. Enable it with `-DFSM_ENABLE_LIBCLANG=ON` and run with
+`FSM_USE_LIBCLANG=1` to route parsing through libclang.
+
 ### [Lexer](Lexer.h)
 Performs lexical analysis on the raw C++ source string, converting it into a stream of `Token`s. It handles C++ keywords, identifiers, operators, and symbols.
 

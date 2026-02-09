@@ -166,9 +166,7 @@ void ModelBuilder::visitReturnStatement(ReturnStatement *node) {
 void ModelBuilder::visitIdentifierExpr(IdentifierExpr *node) {
   // Could be part of event or state name
   // Context determines meaning
-  if (m_currentEventName.isEmpty() && node) {
-    m_currentEventName = node->name;
-  }
+  Q_UNUSED(node);
 }
 
 void ModelBuilder::visitStringLiteralExpr(StringLiteralExpr *node) {
@@ -209,9 +207,6 @@ void ModelBuilder::visitBinaryExpr(BinaryExpr *node) {
 
 void ModelBuilder::visitMemberAccessExpr(MemberAccessExpr *node) {
   // Could be event.type - visit to extract context
-  if (node->object) {
-    node->object->accept(this);
-  }
   if (m_currentEventName.isEmpty() && node) {
     m_currentEventName = node->member;
   }

@@ -377,13 +377,20 @@ function dl(name, content, mime) {
 }
 
 function toggleExpMenu(e) {
-    e.stopPropagation();
-    document.getElementById('exp-menu').classList.toggle('open');
+    if (e && e.stopPropagation) { e.stopPropagation(); }
+    var menu = document.getElementById('exp-menu');
+    if (!menu) { return; }
+    var isOpen = menu.classList.contains('open');
+    menu.classList.toggle('open', !isOpen);
 }
 if (typeof document !== 'undefined') {
-    document.addEventListener('click', function() {
+    document.addEventListener('click', function(e) {
         var menu = document.getElementById('exp-menu');
-        if (menu) { menu.classList.remove('open'); }
+        if (!menu) { return; }
+        /* Don't close if click is inside the dropdown */
+        var dd = document.getElementById('exp-dd');
+        if (dd && dd.contains(e.target)) { return; }
+        menu.classList.remove('open');
     });
 }
 

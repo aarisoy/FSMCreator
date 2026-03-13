@@ -117,6 +117,7 @@
   <button class="tb-btn" id="btn-undo" onclick="undo()" title="Undo (Ctrl+Z)" disabled><span class="icon">↩</span> Undo</button>
   <button class="tb-btn" id="btn-redo" onclick="redo()" title="Redo (Ctrl+Y)" disabled><span class="icon">↪</span> Redo</button>
   <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="openImportMenu()" id="btn-import"><span class="icon">⬆</span> Import</button>
   <div class="tb-dropdown" id="exp-dd">
     <button class="tb-btn" onclick="toggleExpMenu(event)" title="Export FSM"><span class="icon">⬇</span> Export ▾</button>
     <div class="tb-menu" id="exp-menu">
@@ -195,6 +196,7 @@
     </div>
 
     <!-- Code Viewer Panel -->
+    <div id="cv-resize" title="Drag to resize"></div>
     <div id="cv">
       <div class="cv-hd">
         <span class="cv-hl">Output</span>
@@ -243,6 +245,25 @@
 
 <!-- MODAL -->
 <div id="mo"><div class="modal"><div class="modal-title" id="mt">Add State</div><div id="mb"></div><div class="ma"><button class="btn-can" onclick="closeModal()">Cancel</button><button class="btn-ok" onclick="modalOK()">Confirm</button></div></div></div>
+
+<!-- IMPORT MODAL -->
+<div id="imp-overlay">
+  <div id="imp-modal">
+    <div class="imp-hd">
+      <div class="imp-title">Import FSM</div>
+      <button class="imp-close" onclick="closeImportMenu()">✕</button>
+    </div>
+    <div class="imp-bd">
+      <div class="imp-desc">Select C++ header and source files (.h, .cpp) or a DSL text file to import an existing FSM.</div>
+      <input type="file" id="imp-files" multiple accept=".h,.hpp,.cpp,.cxx,.cc,.txt" class="imp-file-input">
+      <div id="imp-status" class="imp-status"></div>
+    </div>
+    <div class="imp-ft">
+      <button class="se-btn cancel" onclick="closeImportMenu()">Cancel</button>
+      <button class="se-btn save" onclick="processImport()">Import</button>
+    </div>
+  </div>
+</div>
 
 <!-- STATE EDITOR MODAL -->
 <div id="se-overlay">

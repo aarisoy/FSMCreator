@@ -41,6 +41,22 @@
 .se-btn.save{background:var(--accent);color:#fff;}
 .se-btn.save:hover{filter:brightness(1.12);}
 
+/* ── IMPORT MODAL ── */
+#imp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:450;backdrop-filter:blur(4px);}
+#imp-overlay.open{display:flex;}
+#imp-modal{background:var(--surface);border:1px solid var(--border2);border-radius:18px;width:440px;display:flex;flex-direction:column;box-shadow:var(--shadow);animation:mIn .2s ease;}
+.imp-hd{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;}
+.imp-title{font-size:16px;font-weight:700;flex:1;}
+.imp-close{width:26px;height:26px;border-radius:7px;background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.imp-close:hover{background:var(--surface2);color:var(--text);}
+.imp-bd{padding:20px;}
+.imp-desc{font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5;}
+.imp-file-input{width:100%;font-size:13px;color:var(--text2);background:var(--surface2);padding:14px;border-radius:10px;border:1px dashed var(--border);cursor:pointer;}
+.imp-file-input:hover{border-color:var(--accent);}
+.imp-file-input::file-selector-button{background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:6px;margin-right:10px;cursor:pointer;font-family:var(--font-ui);font-weight:600;}
+.imp-status{font-size:12px;margin-top:12px;color:var(--red);min-height:15px;}
+.imp-ft{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
 /* ══════════════════════════════════════════════════════
    INLINE STATE EDITOR (Right Panel)
    ══════════════════════════════════════════════════════ */

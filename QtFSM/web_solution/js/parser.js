@@ -130,6 +130,33 @@ function stripBlockComments(src) {
 /* ═══ HEADER PARSER ═══ */
 
 /**
+ * Detect the State-like and Event-like enum type prefix from code.
+ * Matches: State, StateId, BootState, ProtocolState, etc.
+ * @param {string} code - Code to examine.
+ * @returns {object} Object with statePrefix and eventPrefix strings.
+ */
+function detectEnumPrefixes(code) {
+    var statePrefix = 'State';
+    var eventPrefix = 'Event';
+
+    /* Match enum class <prefix> where prefix starts with or contains 'State' */
+    var spRx = /enum\s+class\s+(\w*State\w*)\s*(?::\s*\w+)?\s*\{/;
+    var spMatch = spRx.exec(code);
+    if (spMatch) {
+        statePrefix = spMatch[1];
+    }
+
+    /* Match enum class <prefix> where prefix starts with or contains 'Event' */
+    var epRx = /enum\s+class\s+(\w*Event\w*)\s*(?::\s*\w+)?\s*\{/;
+    var epMatch = epRx.exec(code);
+    if (epMatch) {
+        eventPrefix = epMatch[1];
+    }
+
+    return { statePrefix: statePrefix, eventPrefix: eventPrefix };
+}
+
+/**
  * Parse the header section to extract class name, state enum, event enum,
  * and initial state from constructor.
  * @param {string} header - Header content.
@@ -148,8 +175,24 @@ function parseHeader(header, result) {
         result.infos.push('Found class: ' + clsMatch[1]);
     }
 
-    /* State enum */
-    var stateEnumRx = /enum\s+(?:class\s+)?State\s*(?::\s*\w+)?\s*\{([^}]+)\}/;
+    /* Config-format FSM name from comment (takes priority over class name) */
+    var cfgNameRx = /\/\/\s*Auto-generated FSM Config\s*-\s*(.+)/;
+    var cfgNameMatch = cfgNameRx.exec(clean);
+    if (cfgNameMatch) {
+        result.name = cfgNameMatch[1].trim();
+        result.infos.push('Config FSM name: ' + result.name);
+    }
+
+    /* Detect state/event enum prefixes (State, StateId, BootState, etc.) */
+    var prefixes = detectEnumPrefixes(clean);
+    result._statePrefix = prefixes.statePrefix;
+    result._eventPrefix = prefixes.eventPrefix;
+
+    /* State enum — flexible prefix */
+    var stateEnumRx = new RegExp(
+        'enum\\s+(?:class\\s+)?' + escapeRegex(prefixes.statePrefix) +
+        '\\s*(?::\\s*\\w+)?\\s*\\{([^}]+)\\}'
+    );
     var sem = stateEnumRx.exec(clean);
     if (sem) {
         sem[1].split(',').forEach(function(part) {
@@ -161,15 +204,20 @@ function parseHeader(header, result) {
         });
     }
 
-    /* Event enum */
-    var eventEnumRx = /enum\s+(?:class\s+)?Event\s*(?::\s*\w+)?\s*\{([^}]+)\}/;
+    /* Event enum — flexible prefix */
+    var eventEnumRx = new RegExp(
+        'enum\\s+(?:class\\s+)?' + escapeRegex(prefixes.eventPrefix) +
+        '\\s*(?::\\s*\\w+)?\\s*\\{([^}]+)\\}'
+    );
     var eem = eventEnumRx.exec(clean);
     if (eem) {
         result.infos.push('Found event enum');
     }
 
-    /* Initial state from constructor initializer */
-    var ctorRx = /state_\s*\(\s*State::([\w]+)\s*\)/;
+    /* Initial state from constructor initializer — flexible prefix */
+    var ctorRx = new RegExp(
+        'state_\\s*\\(\\s*' + escapeRegex(prefixes.statePrefix) + '::(\\w+)\\s*\\)'
+    );
     var cm = ctorRx.exec(clean);
     if (cm) {
         result.initial = cm[1];
@@ -177,9 +225,11 @@ function parseHeader(header, result) {
         result.infos.push('Initial state: ' + cm[1]);
     }
 
-    /* Initial state from assignment */
+    /* Initial state from assignment — flexible prefix */
     if (!result.initial) {
-        var assignRx = /state_\s*=\s*State::([\w]+)/;
+        var assignRx = new RegExp(
+            'state_\\s*=\\s*' + escapeRegex(prefixes.statePrefix) + '::(\\w+)'
+        );
         var am = assignRx.exec(clean);
         if (am) {
             result.initial = am[1];
@@ -202,10 +252,23 @@ function parseHeader(header, result) {
     }
 }
 
+/**
+ * Escape a string for safe use in a RegExp constructor.
+ * @param {string} str - String to escape.
+ * @returns {string} Escaped string.
+ */
+function escapeRegex(str) {
+    if (typeof str !== 'string') {
+        return '';
+    }
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /* ═══ SOURCE PARSER ═══ */
 
 /**
  * Parse the source section to extract transitions and entry/exit actions.
+ * Supports both switch/case patterns and config-map patterns.
  * @param {string} source - Source content.
  * @param {object} result - Parse result to populate.
  */
@@ -214,23 +277,32 @@ function parseSource(source, result) {
         return;
     }
     var clean = stripBlockComments(source);
+    var sp = result._statePrefix || 'State';
+    var ep = result._eventPrefix || 'Event';
 
-    /* Transitions from switch/case + if blocks */
-    var caseRx = /case\s+State::(\w+)\s*:([^]*?)(?=case\s+State::|default\s*:|$)/g;
+    /* Try switch/case pattern first — flexible prefix */
+    var caseRxStr = 'case\\s+' + escapeRegex(sp) + '::(\\w+)\\s*:([^]*?)(?=case\\s+' +
+                    escapeRegex(sp) + '::|default\\s*:|$)';
+    var caseRx = new RegExp(caseRxStr, 'g');
     var cm;
+    var foundSwitchCase = false;
     while ((cm = caseRx.exec(clean)) !== null) {
+        foundSwitchCase = true;
         var fromState = cm[1];
         getOrAddState(result, fromState);
         var block = cm[2];
 
         /* if (event == Event::NAME) { ... state_ = State::TO ... } */
-        var ifRx = /if\s*\(\s*event\s*==\s*Event::(\w+)\s*\)\s*\{([^}]*)\}/g;
+        var ifRxStr = 'if\\s*\\(\\s*event\\s*==\\s*' + escapeRegex(ep) +
+                      '::(\\w+)\\s*\\)\\s*\\{([^}]*)\\}';
+        var ifRx = new RegExp(ifRxStr, 'g');
         var im;
         while ((im = ifRx.exec(block)) !== null) {
             var evName = im[1];
             var ifBody = im[2];
 
-            var tgtRx = /state_\s*=\s*State::(\w+)\s*;/;
+            var tgtRxStr = 'state_\\s*=\\s*' + escapeRegex(sp) + '::(\\w+)\\s*;';
+            var tgtRx = new RegExp(tgtRxStr);
             var tgtM = tgtRx.exec(ifBody);
             if (tgtM) {
                 var toState = tgtM[1];
@@ -264,19 +336,201 @@ function parseSource(source, result) {
         }
     }
 
-    /* Entry actions from onEntry function */
+    /* Config-map pattern: cfg[StatePrefix::FROM] = { ..., { {EventPrefix::EV, StatePrefix::TO, ...}, } } */
+    if (!foundSwitchCase) {
+        parseConfigMapTransitions(clean, result, sp, ep);
+    }
+
+    /* QtFSM config format: cfg.states["S1"] = StateConfig{ "Name", ..., { {"ev", "tgt", "guard", "action"}, } } */
+    if (!foundSwitchCase && result.transitions.length === 0) {
+        parseQtFsmConfig(clean, result);
+    }
+
+    /* Entry actions from onEntry function — flexible prefix */
     var entryFnRx = /void\s+\w*onEntry\w*\s*\([^)]*\)\s*\{([^]*?)(?=\nvoid\s|\n\s*\}\s*$|\Z)/;
     var efm = entryFnRx.exec(clean);
     if (efm) {
-        parseCaseActions(efm[1], result, 'onEntry');
+        parseCaseActions(efm[1], result, 'onEntry', sp);
     }
 
-    /* Exit actions from onExit function */
+    /* Exit actions from onExit function — flexible prefix */
     var exitFnRx = /void\s+\w*onExit\w*\s*\([^)]*\)\s*\{([^]*?)(?=\nvoid\s|\n\s*\}\s*$|\Z)/;
     var xfm = exitFnRx.exec(clean);
     if (xfm) {
-        parseCaseActions(xfm[1], result, 'onExit');
+        parseCaseActions(xfm[1], result, 'onExit', sp);
     }
+}
+
+/**
+ * Parse config-map transition patterns.
+ * Matches: cfg[StatePrefix::FROM] = { StatePrefix::FROM, "FROM", ..., { {EventPrefix::EV, StatePrefix::TO, ...}, ... } }
+ * @param {string} code - Cleaned source code.
+ * @param {object} result - Parse result.
+ * @param {string} sp - State enum prefix.
+ * @param {string} ep - Event enum prefix.
+ */
+function parseConfigMapTransitions(code, result, sp, ep) {
+    /* Match config assignments: variable[StatePrefix::NAME] = { ... }; or without trailing semicolon */
+    var cfgEntryRxStr = '\\w+\\[' + escapeRegex(sp) + '::(\\w+)\\]\\s*=\\s*\\{';
+    var cfgEntryRx = new RegExp(cfgEntryRxStr, 'g');
+    var em;
+    while ((em = cfgEntryRx.exec(code)) !== null) {
+        var fromState = em[1];
+        getOrAddState(result, fromState);
+
+        /* Find the block following this match — we need to handle nested braces */
+        var startIdx = em.index + em[0].length;
+        var cfgBlock = extractBalancedBraces(code, startIdx - 1);
+        if (!cfgBlock) {
+            continue;
+        }
+
+        /* Extract transitions: {EventPrefix::EV, StatePrefix::TO, ...} */
+        var transRxStr = '\\{\\s*' + escapeRegex(ep) + '::(\\w+)\\s*,\\s*' +
+                         escapeRegex(sp) + '::(\\w+)';
+        var transRx = new RegExp(transRxStr, 'g');
+        var tm;
+        while ((tm = transRx.exec(cfgBlock)) !== null) {
+            var evName = tm[1];
+            var toState = tm[2];
+            getOrAddState(result, toState);
+
+            result.transitions.push({
+                from: fromState,
+                to: toState,
+                event: evName,
+                guard: '',
+                action: ''
+            });
+            result.infos.push('Config trans: ' + fromState + ' -> ' + toState + ' [' + evName + ']');
+        }
+    }
+}
+
+/**
+ * Parse QtFSM config format: cfg.states["ID"] = StateConfig{ "Name", x, y, isFinal, "entry", "exit", { transitions } }
+ * @param {string} code - Cleaned source code.
+ * @param {object} result - Parse result.
+ */
+function parseQtFsmConfig(code, result) {
+    /* Detect FSM name from comment */
+    var nameRx = /\/\/\s*Auto-generated FSM Config\s*-\s*(.+)/;
+    var nameMatch = nameRx.exec(code);
+    if (nameMatch && !result.name) {
+        result.name = nameMatch[1].trim();
+    }
+
+    /* Detect initial state */
+    var initialRx = /cfg\.initial\s*=\s*"([^"]*)"/;
+    var initialMatch = initialRx.exec(code);
+    var initialId = initialMatch ? initialMatch[1] : null;
+
+    /* Parse state configs */
+    var stateRx = /cfg\.states\["([^"]*)"\]\s*=\s*StateConfig\s*\{/g;
+    var sm;
+    var stateIdToName = {};
+    while ((sm = stateRx.exec(code)) !== null) {
+        var stateId = sm[1];
+
+        /* Extract the block */
+        var blockStart = sm.index + sm[0].length;
+        var cfgBlock = extractBalancedBraces(code, blockStart - 1);
+        if (!cfgBlock) {
+            continue;
+        }
+
+        /* First quoted string is the state name */
+        var nameMatch2 = cfgBlock.match(/^\s*"([^"]*)"/);
+        var stateName = nameMatch2 ? nameMatch2[1] : stateId;
+        stateIdToName[stateId] = stateName;
+
+        getOrAddState(result, stateName, 'normal');
+
+        /* Check isFinal (4th field) */
+        var fieldsBeforeTrans = cfgBlock.split('{')[0];
+        if (/true/.test(fieldsBeforeTrans) && fieldsBeforeTrans.split(',').length > 3) {
+            var s = result.states.find(function(x) { return x.name === stateName; });
+            if (s && s.type !== 'initial') {
+                s.type = 'final';
+            }
+        }
+
+        /* Extract entry/exit actions (5th and 6th quoted strings in the main block) */
+        var quotedStrings = fieldsBeforeTrans.match(/"([^"]*)"/g);
+        if (quotedStrings && quotedStrings.length >= 3) {
+            var entryAction = quotedStrings[1].replace(/^"|"$/g, '');
+            var exitAction = quotedStrings[2].replace(/^"|"$/g, '');
+            var stObj = result.states.find(function(x) { return x.name === stateName; });
+            if (stObj) {
+                if (entryAction) { stObj.onEntry = entryAction; }
+                if (exitAction) { stObj.onExit = exitAction; }
+            }
+        }
+
+        /* Parse transitions: {"event", "target", "guard", "action"} */
+        var transRx = /\{\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\}/g;
+        var tm;
+        while ((tm = transRx.exec(cfgBlock)) !== null) {
+            result.transitions.push({
+                from: stateName,
+                to: tm[2],  /* Will be mapped from ID to name later */
+                event: tm[1],
+                guard: tm[3],
+                action: tm[4]
+            });
+            result.infos.push('QtFSM trans: ' + stateName + ' -> ' + tm[2] + ' [' + tm[1] + ']');
+        }
+    }
+
+    /* Map transition targets from IDs to state names */
+    result.transitions.forEach(function(t) {
+        if (stateIdToName[t.to]) {
+            t.to = stateIdToName[t.to];
+        }
+        if (stateIdToName[t.from]) {
+            t.from = stateIdToName[t.from];
+        }
+    });
+
+    /* Set initial state */
+    if (initialId && stateIdToName[initialId]) {
+        result.initial = stateIdToName[initialId];
+        getOrAddState(result, stateIdToName[initialId], 'initial');
+    } else if (initialId) {
+        result.initial = initialId;
+    }
+
+    /* Ensure referenced states exist */
+    result.transitions.forEach(function(t) {
+        getOrAddState(result, t.to);
+        getOrAddState(result, t.from);
+    });
+}
+
+/**
+ * Extract content within balanced braces starting at the given opening brace.
+ * @param {string} code - Full code string.
+ * @param {number} openIdx - Index of the opening '{' character.
+ * @returns {string|null} Content between braces (exclusive), or null if unbalanced.
+ */
+function extractBalancedBraces(code, openIdx) {
+    if (code[openIdx] !== '{') {
+        return null;
+    }
+    var depth = 1;
+    var i = openIdx + 1;
+    while (i < code.length && depth > 0) {
+        if (code[i] === '{') {
+            depth++;
+        } else if (code[i] === '}') {
+            depth--;
+        }
+        i++;
+    }
+    if (depth !== 0) {
+        return null;
+    }
+    return code.substring(openIdx + 1, i - 1);
 }
 
 /**
@@ -284,9 +538,13 @@ function parseSource(source, result) {
  * @param {string} body - Switch body content.
  * @param {object} result - Parse result.
  * @param {string} field - 'onEntry' or 'onExit'.
+ * @param {string} sp - State enum prefix (optional, defaults to 'State').
  */
-function parseCaseActions(body, result, field) {
-    var caseRx = /case\s+State::(\w+)\s*:([^]*?)(?=case\s+State::|default\s*:|$)/g;
+function parseCaseActions(body, result, field, sp) {
+    var prefix = sp || 'State';
+    var caseRxStr = 'case\\s+' + escapeRegex(prefix) + '::(\\w+)\\s*:([^]*?)(?=case\\s+' +
+                    escapeRegex(prefix) + '::|default\\s*:|$)';
+    var caseRx = new RegExp(caseRxStr, 'g');
     var cm;
     while ((cm = caseRx.exec(body)) !== null) {
         var sName = cm[1];
@@ -602,8 +860,13 @@ if (typeof module !== 'undefined' && module.exports) {
         blankResult: blankResult,
         getOrAddState: getOrAddState,
         stripBlockComments: stripBlockComments,
+        detectEnumPrefixes: detectEnumPrefixes,
+        escapeRegex: escapeRegex,
+        extractBalancedBraces: extractBalancedBraces,
         parseHeader: parseHeader,
         parseSource: parseSource,
+        parseConfigMapTransitions: parseConfigMapTransitions,
+        parseQtFsmConfig: parseQtFsmConfig,
         parseDsl: parseDsl,
         parseMarked: parseMarked,
         parseInput: parseInput

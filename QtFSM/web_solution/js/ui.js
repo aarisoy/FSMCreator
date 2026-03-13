@@ -75,11 +75,13 @@ function toggleCV() {
     cvOpen = !cvOpen;
     var cv = document.getElementById('cv');
     var btn = document.getElementById('btn-cv');
+    var rh = document.getElementById('cv-resize');
     if (cv) {
         cv.classList.toggle('open', cvOpen);
         if (!cvOpen) { cv.classList.remove('xp'); cvXP = false; }
     }
     if (btn) { btn.classList.toggle('active', cvOpen); }
+    if (rh) { rh.classList.toggle('active', cvOpen); }
 }
 
 function closeCV() {
@@ -89,6 +91,8 @@ function closeCV() {
     if (cv) { cv.className = ''; }
     var btn = document.getElementById('btn-cv');
     if (btn) { btn.classList.remove('active'); }
+    var rh = document.getElementById('cv-resize');
+    if (rh) { rh.classList.remove('active'); }
 }
 
 function toggleCVExpand() {
@@ -142,8 +146,47 @@ function showCV(tab) {
         if (cv) { cv.classList.add('open'); }
         var btn = document.getElementById('btn-cv');
         if (btn) { btn.classList.add('active'); }
+        var rh = document.getElementById('cv-resize');
+        if (rh) { rh.classList.add('active'); }
     }
     renderCV();
+}
+
+/* ═══ CODE VIEWER DRAG-RESIZE ═══ */
+var cvDragging = false;
+var cvStartY = 0;
+var cvStartH = 0;
+
+if (typeof document !== 'undefined') {
+    var cvResizeHandle = document.getElementById('cv-resize');
+    if (cvResizeHandle) {
+        cvResizeHandle.addEventListener('mousedown', function(e) {
+            if (!cvOpen) { return; }
+            e.preventDefault();
+            cvDragging = true;
+            cvStartY = e.clientY;
+            var cv = document.getElementById('cv');
+            cvStartH = cv ? cv.offsetHeight : 300;
+            document.body.style.cursor = 'ns-resize';
+            document.body.style.userSelect = 'none';
+        });
+    }
+    document.addEventListener('mousemove', function(e) {
+        if (!cvDragging) { return; }
+        var delta = cvStartY - e.clientY;
+        var newH = Math.max(80, Math.min(cvStartH + delta, window.innerHeight - 150));
+        var cv = document.getElementById('cv');
+        if (cv) {
+            cv.style.height = newH + 'px';
+        }
+    });
+    document.addEventListener('mouseup', function() {
+        if (cvDragging) {
+            cvDragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
 }
 
 function copyCV() {
@@ -410,7 +453,6 @@ function renderSL() {
         var d = document.createElement('div');
         d.className = 'sc' + (s.id === inlineEditId ? ' sel' : '');
         d.innerHTML =
-            '<div class="sc-dot ' + s.type + '"></div>' +
             '<div class="sc-name">' + s.name + '</div>' +
             '<div class="sc-type">' + s.type + '</div>' +
             '<button class="sc-del" title="Delete">✕</button>';
@@ -455,8 +497,7 @@ function renderInlineStateEditor(container, state) {
     /* ── Header ── */
     var hdr = document.createElement('div');
     hdr.className = 'ise-hdr';
-    hdr.innerHTML = '<div class="ise-dot ' + state.type + '"></div>' +
-        '<div class="ise-title">' + state.name + '</div>' +
+    hdr.innerHTML = '<div class="ise-title">' + state.name + '</div>' +
         '<button class="ise-edit" onclick="openSE(\'' + state.id + '\')" title="Open full editor">⚙</button>' +
         '<button class="ise-close" title="Close">✕</button>';
     hdr.querySelector('.ise-close').onclick = function() {
@@ -778,4 +819,84 @@ function updSB() {
     var sc2 = document.getElementById('sc2');
     if (sc1) { sc1.textContent = fsm.states.length + ' state' + (fsm.states.length !== 1 ? 's' : ''); }
     if (sc2) { sc2.textContent = fsm.transitions.length + ' transition' + (fsm.transitions.length !== 1 ? 's' : ''); }
+}
+
+/* ═══ IMPORT MODAL ═══ */
+
+function openImportMenu() {
+    var overlay = document.getElementById('imp-overlay');
+    if (overlay) { overlay.classList.add('open'); }
+    var status = document.getElementById('imp-status');
+    if (status) { status.textContent = ''; }
+    var fi = document.getElementById('imp-files');
+    if (fi) { fi.value = ''; }
+}
+
+function closeImportMenu() {
+    var overlay = document.getElementById('imp-overlay');
+    if (overlay) { overlay.classList.remove('open'); }
+}
+
+function processImport() {
+    var fi = document.getElementById('imp-files');
+    var status = document.getElementById('imp-status');
+    if (!fi || !fi.files || fi.files.length === 0) {
+        if (status) { status.textContent = 'Please select at least one file to import.'; }
+        return;
+    }
+    
+    var files = Array.from(fi.files);
+    var contents = [];
+    var loadedCount = 0;
+    
+    files.forEach(function(f, i) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            contents[i] = e.target.result;
+            loadedCount++;
+            if (loadedCount === files.length) {
+                // Combine contents
+                var combined = contents.join('\n\n/* --- FILE BOUNDARY --- */\n\n');
+                finalizeImport(combined);
+            }
+        };
+        reader.readAsText(f);
+    });
+}
+
+function finalizeImport(combinedText) {
+    if (typeof parser === 'undefined' || !parser.parseInput) {
+        var status = document.getElementById('imp-status');
+        if (status) { status.textContent = 'Parser module not loaded.'; }
+        return;
+    }
+    var res = parser.parseInput(combinedText);
+    if (res.errors && res.errors.length > 0) {
+        var status = document.getElementById('imp-status');
+        if (status) { status.textContent = 'Parse error: ' + res.errors[0]; }
+        return;
+    }
+    
+    if (res.states && res.states.length > 0) {
+        resetFSM();
+        fsm.name = res.name || 'ImportedFSM';
+        fsm.initial = res.initial || '';
+        fsm.states = res.states;
+        fsm.transitions = res.transitions || [];
+        
+        // Auto-layout if missing coordinates
+        fsm.states.forEach(function(s, i) {
+            if (s.x === undefined) { s.x = 100 + (i % 4) * 160; }
+            if (s.y === undefined) { s.y = 100 + Math.floor(i / 4) * 120; }
+        });
+        
+        snap();
+        closeImportMenu();
+        renderAll();
+        refreshProps();
+        if (typeof toast === 'function') { toast('Imported ' + fsm.states.length + ' states ✓', 'ok'); }
+    } else {
+        var status = document.getElementById('imp-status');
+        if (status) { status.textContent = 'No FSM states could be found in the files.'; }
+    }
 }

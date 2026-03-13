@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Studio — FSM · Flow · Composition</title>
+<meta name="description" content="Create finite state machines, flow diagrams, and component compositions with a visual config-based editor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HOMEPAGE — Project Type Selection
+     ══════════════════════════════════════════════════════════ -->
+<div id="homepage">
+  <div class="home-bg"></div>
+
+  <!-- Top nav -->
+  <nav class="home-nav">
+    <div class="home-nav-logo">
+      <div class="home-logo-icon">DS</div>
+      <span class="home-logo-text">Design Studio</span>
+    </div>
+    <div class="home-nav-spacer"></div>
+    <button class="theme-toggle" id="home-theme-btn" onclick="toggleTheme()">
+      <span id="hti">☀</span><span id="htl">Light</span>
+    </button>
+  </nav>
+
+  <!-- Hero -->
+  <div class="home-hero">
+    <h1 class="home-title">What would you like to <span class="home-accent">design</span>?</h1>
+    <p class="home-subtitle">Choose a project type to get started. Build production-ready configs with our visual editor.</p>
+  </div>
+
+  <!-- Project cards -->
+  <div class="home-cards">
+    <div class="home-card home-card-active" id="card-fsm" onclick="navigateToWorkspace('fsm')">
+      <div class="card-glow"></div>
+      <div class="card-icon card-icon-fsm">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <circle cx="12" cy="20" r="6" stroke="currentColor" stroke-width="2"/>
+          <circle cx="28" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+          <circle cx="28" cy="28" r="5" stroke="currentColor" stroke-width="2"/>
+          <path d="M17 18L23 13M17 22L23 27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M28 17L28 23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <h2 class="card-title">FSM Creator</h2>
+      <p class="card-desc">Design finite state machines visually. Parse C++ code, generate config-based output with header/source sections.</p>
+      <div class="card-features">
+        <span class="card-feat">Visual Editor</span>
+        <span class="card-feat">C++ Generation</span>
+        <span class="card-feat">Config-Based</span>
+      </div>
+      <button class="card-btn">Create FSM →</button>
+    </div>
+
+    <div class="home-card home-card-soon" id="card-flow">
+      <div class="card-icon card-icon-flow">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect x="8" y="6" width="10" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="22" y="6" width="10" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M13 14V20H27V14" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M20 20V26" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M14 30L20 26L26 30" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+      <h2 class="card-title">Flow Diagram</h2>
+      <p class="card-desc">Create and visualize decision flows, process pipelines, and algorithm flowcharts.</p>
+      <div class="card-badge">Coming Soon</div>
+    </div>
+
+    <div class="home-card home-card-soon" id="card-comp">
+      <div class="card-icon card-icon-comp">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect x="6" y="6" width="28" height="28" rx="4" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="10" y="10" width="8" height="8" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <rect x="22" y="10" width="8" height="8" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <rect x="10" y="22" width="20" height="8" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+      <h2 class="card-title">Component Composition</h2>
+      <p class="card-desc">Build modular component architectures and define interfaces between subsystems.</p>
+      <div class="card-badge">Coming Soon</div>
+    </div>
+  </div>
+
+  <div class="home-footer">
+    <p>Built for embedded systems • Config-based C++ generation • Open Source</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     WORKSPACE — FSM Editor (hidden initially)
+     ══════════════════════════════════════════════════════════ -->
+<div id="workspace-page" style="display:none;">
+<div id="app">
+
+<!-- ══ TITLEBAR ══════════════════════════════════════════ -->
+<header id="titlebar">
+  <button class="tb-btn" onclick="navigateToHome()" title="Back to Homepage"><span class="icon">←</span> Home</button>
+  <div class="tb-sep"></div>
+  <div class="tb-logo"><div class="tb-logo-icon">FSM</div>FSM Creator</div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn primary" onclick="parseAndBuild()" title="Parse input → build diagram"><span class="icon">⟶</span> Parse & Draw</button>
+  <button class="tb-btn success" onclick="generateCppAndShow()" title="Generate C++ class"><span class="icon">⚙</span> Generate C++</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="openAddState()"><span class="icon">◉</span> Add State</button>
+  <button class="tb-btn" onclick="openAddTransition()"><span class="icon">⤳</span> Add Transition</button>
+  <button class="tb-btn" id="btn-undo" onclick="undo()" title="Undo (Ctrl+Z)" disabled><span class="icon">↩</span> Undo</button>
+  <button class="tb-btn" id="btn-redo" onclick="redo()" title="Redo (Ctrl+Y)" disabled><span class="icon">↪</span> Redo</button>
+  <div class="tb-sep"></div>
+  <div class="tb-dropdown" id="exp-dd">
+    <button class="tb-btn" onclick="toggleExpMenu(event)" title="Export FSM"><span class="icon">⬇</span> Export ▾</button>
+    <div class="tb-menu" id="exp-menu">
+      <div class="dd-item" onclick="exportCpp()">📄 Export as C++ (.h/.cpp)</div>
+      <div class="dd-item" onclick="exportJson()">📋 Export as JSON (.json)</div>
+      <div class="dd-item" onclick="exportDsl()">📝 Export as DSL (.txt)</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="copyCpp()">⎘ Copy C++ to clipboard</div>
+      <div class="dd-item" onclick="copyJson()">⎘ Copy JSON to clipboard</div>
+    </div>
+  </div>
+  <div class="tb-spacer"></div>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <span id="ti">☀</span><span id="tl">Light</span>
+  </button>
+</header>
+
+<!-- ══ WORKSPACE ════════════════════════════════════════ -->
+<div id="workspace">
+
+  <!-- LEFT PANEL -->
+  <div class="side-panel" id="left-panel">
+    <div class="panel-hd">Elements<button onclick="collapsePanel('l')" title="Collapse">◀</button></div>
+    <div class="palette">
+      <div class="pal-item" draggable="true" ondragstart="palDrag(event,'state')"><div class="p-icon pi-s">◉</div>State</div>
+      <div class="pal-item" draggable="true" ondragstart="palDrag(event,'initial')"><div class="p-icon pi-i">⬤</div>Initial State</div>
+      <div class="pal-item" draggable="true" ondragstart="palDrag(event,'final')"><div class="p-icon pi-f">◎</div>Final State</div>
+      <div class="pal-item" draggable="true" ondragstart="palDrag(event,'transition')"><div class="p-icon pi-t">⤳</div>Transition</div>
+    </div>
+    <div id="ced">
+      <div class="ced-hd">
+        <span class="ced-title">Code Input</span>
+        <div class="ced-actions">
+          <button class="ced-toggle" id="ced-toggle-btn" onclick="toggleCodeInput()" title="Expand / Collapse">▼</button>
+          <button class="ced-clr" onclick="document.getElementById('code-ta').value=''" title="Clear">✕</button>
+        </div>
+      </div>
+      <div id="code-input-wrapper" class="code-input-expanded">
+        <textarea id="code-ta" spellcheck="false"
+          placeholder="// Paste FSM code here — supported formats:&#10;//&#10;// ── DSL Format ──&#10;// FSM: MyFSM&#10;// STATE: Idle&#10;// INIT: Idle&#10;// TRANS: Idle -> Running : START [guard] / action()&#10;//&#10;// ── Marked C++ (header+source sections) ──&#10;// // === FSM_HEADER_BEGIN ===&#10;// class MyFSM { ... };&#10;// // === FSM_HEADER_END ===&#10;// // === FSM_SOURCE_BEGIN ===&#10;// bool MyFSM::process(...) { ... }&#10;// // === FSM_SOURCE_END ==="></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="cc">
+    <!-- Canvas -->
+    <div id="cw" ondragover="event.preventDefault()" ondrop="canvasDrop(event)">
+      <div id="csb">
+        <div class="sch" id="sc1">0 states</div>
+        <div class="sch" id="sc2">0 transitions</div>
+      </div>
+      <button id="elb" onclick="expandPanel('l')" title="Expand">▶</button>
+      <button id="erb" onclick="expandPanel('r')" title="Expand">◀</button>
+      <div id="ch"><div class="ch1">Drop elements or use toolbar</div><div class="ch2">Drag from panel · Connect mode to link · Scroll to zoom</div></div>
+      <svg class="fsm-svg" id="fsm-svg" onmousedown="svgMD(event)" onmousemove="svgMM(event)" onmouseup="svgMU(event)" ondblclick="svgDbl(event)">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="var(--accent2)"/></marker>
+          <marker id="arrow-sel" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="var(--accent)"/></marker>
+        </defs>
+        <g id="svg-tl"></g><g id="svg-sl"></g>
+      </svg>
+      <div id="ctb">
+        <button class="ctb-btn" onclick="zoomIn()" title="Zoom In (=)">＋</button>
+        <button class="ctb-btn" onclick="zoomOut()" title="Zoom Out (-)">－</button>
+        <button class="ctb-btn" onclick="fitView()" title="Fit (F)">⊡</button>
+        <button class="ctb-btn" onclick="centerView()" title="Center">⊕</button>
+        <div class="ctb-sep"></div>
+        <button class="ctb-btn active" id="ms" onclick="setMode('sel')" title="Select (S)">↖</button>
+        <button class="ctb-btn" id="mc" onclick="setMode('con')" title="Connect (C)">⤳</button>
+        <button class="ctb-btn" id="md" onclick="setMode('del')" title="Delete (D)">✕</button>
+        <div class="ctb-sep"></div>
+        <button class="ctb-btn" id="btn-cv" onclick="toggleCV()" title="Code viewer (V)">⌨</button>
+        <button class="ctb-btn" id="btn-cx" onclick="toggleCanvasMax()" title="Expand canvas (X)">⤢</button>
+      </div>
+    </div>
+
+    <!-- Code Viewer Panel -->
+    <div id="cv">
+      <div class="cv-hd">
+        <span class="cv-hl">Output</span>
+        <div class="cv-tabs">
+          <div class="cv-tab active" id="cvt-cpp" onclick="setCVTab('cpp')">C++</div>
+          <div class="cv-tab" id="cvt-json" onclick="setCVTab('json')">JSON</div>
+        </div>
+        <div class="cv-acts">
+          <button class="cv-btn" onclick="copyCV()" title="Copy">⎘</button>
+          <button class="cv-btn" id="cv-xbtn" onclick="toggleCVExpand()" title="Expand">⤢</button>
+          <button class="cv-btn" onclick="closeCV()" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="cv-body" id="cv-body"><div class="cv-empty">// Run Generate C++ to see output</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="side-panel" id="right-panel">
+    <div class="panel-hd">Properties<button onclick="collapsePanel('r')" title="Collapse">▶</button></div>
+    <div class="prop-tabs">
+      <div class="prop-tab active" onclick="switchTab('fsm')" id="tab-fsm">FSM</div>
+      <div class="prop-tab" onclick="switchTab('states')" id="tab-states">States</div>
+      <div class="prop-tab" onclick="switchTab('trans')" id="tab-trans">Trans</div>
+    </div>
+    <div class="prop-content" id="tc-fsm">
+      <div class="pg"><div class="pl">FSM Name</div><input class="pf" id="fsm-name" value="MyFSM" oninput="fsm.name=this.value||'MyFSM'"></div>
+      <div class="pg"><div class="pl">Namespace</div><input class="pf" id="fsm-ns" placeholder="e.g. fsm"></div>
+      <div class="pg"><div class="pl">Initial State</div><select class="pf" id="fsm-init" onchange="fsm.initial=this.value"><option value="">— none —</option></select></div>
+      <div class="pg"><div class="pl">Description</div><textarea class="pf" id="fsm-desc" rows="3" placeholder="Optional..." style="resize:vertical;font-family:var(--font-ui);"></textarea></div>
+      <div class="pg"><div class="pl">Stats</div>
+        <div class="stats-block">
+          <div class="sr"><span>States</span><span id="st-s">0</span></div>
+          <div class="sr"><span>Transitions</span><span id="st-t">0</span></div>
+          <div class="sr"><span>Final States</span><span id="st-f">0</span></div>
+          <div class="sr"><span>Events</span><span id="st-e">0</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="prop-content" id="tc-states" style="display:none;"><div id="sl-ui"></div></div>
+    <div class="prop-content" id="tc-trans" style="display:none;"><div id="tl-ui"></div></div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div id="mo"><div class="modal"><div class="modal-title" id="mt">Add State</div><div id="mb"></div><div class="ma"><button class="btn-can" onclick="closeModal()">Cancel</button><button class="btn-ok" onclick="modalOK()">Confirm</button></div></div></div>
+
+<!-- STATE EDITOR MODAL -->
+<div id="se-overlay">
+  <div id="se-modal">
+    <div class="se-header">
+      <div class="se-type-dot" id="se-dot"></div>
+      <div class="se-title" id="se-title">Edit State</div>
+      <button class="se-close" onclick="closeSE()">✕</button>
+    </div>
+    <div class="se-body">
+      <div class="se-tabs">
+        <div class="se-tab active" id="set-general" onclick="setSETab('general')">General</div>
+        <div class="se-tab" id="set-entry" onclick="setSETab('entry')">On Entry</div>
+        <div class="se-tab" id="set-exit" onclick="setSETab('exit')">On Exit</div>
+        <div class="se-tab" id="set-internal" onclick="setSETab('internal')">Internal Events</div>
+      </div>
+      <div id="se-general">
+        <div class="se-section">
+          <div class="se-label">State Name</div>
+          <input class="se-input" id="se-name" placeholder="e.g. Idle">
+        </div>
+        <div class="se-row">
+          <div>
+            <div class="se-label">Type</div>
+            <select class="se-input" id="se-type">
+              <option value="normal">Normal</option>
+              <option value="initial">Initial</option>
+              <option value="final">Final</option>
+            </select>
+          </div>
+          <div>
+            <div class="se-label">History</div>
+            <select class="se-input" id="se-history">
+              <option value="none">None</option>
+              <option value="shallow">Shallow</option>
+              <option value="deep">Deep</option>
+            </select>
+          </div>
+        </div>
+        <div class="se-section">
+          <div class="se-label">Comment / Description</div>
+          <textarea class="se-textarea" id="se-comment" placeholder="Optional notes about this state..." rows="3"></textarea>
+        </div>
+      </div>
+      <div id="se-entry" style="display:none;">
+        <div class="se-section">
+          <div class="se-label">On Entry Actions <span class="se-label-hint">— called when state is entered</span></div>
+          <textarea class="se-textarea" id="se-onentry" placeholder="e.g.&#10;startTimer();&#10;setLed(ON);" rows="8"></textarea>
+        </div>
+        <div class="se-section">
+          <div class="se-label">Entry Guard <span class="se-label-hint">— condition to allow entry</span></div>
+          <input class="se-input" id="se-entry-guard" placeholder="e.g. isReady() && voltage > 3.3">
+        </div>
+      </div>
+      <div id="se-exit" style="display:none;">
+        <div class="se-section">
+          <div class="se-label">On Exit Actions <span class="se-label-hint">— called when state is left</span></div>
+          <textarea class="se-textarea" id="se-onexit" placeholder="e.g.&#10;stopTimer();&#10;cleanup();" rows="8"></textarea>
+        </div>
+        <div class="se-section">
+          <div class="se-label">Exit Guard <span class="se-label-hint">— condition to allow exit</span></div>
+          <input class="se-input" id="se-exit-guard" placeholder="e.g. pendingTasks == 0">
+        </div>
+      </div>
+      <div id="se-internal" style="display:none;">
+        <div class="se-section">
+          <div class="se-label">Internal Transitions <span class="se-label-hint">— handled without state change</span></div>
+          <table class="ie-table">
+            <thead><tr><th>Event</th><th>Guard</th><th>Action</th><th></th></tr></thead>
+            <tbody id="ie-tbody"></tbody>
+          </table>
+          <button class="ie-add" onclick="addIERow()">＋ Add internal event</button>
+        </div>
+      </div>
+    </div>
+    <div class="se-footer">
+      <button class="se-btn cancel" onclick="closeSE()">Cancel</button>
+      <button class="se-btn save" onclick="saveSE()">Save State</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ── Scripts ──────────────────────────────────────────────── -->
+<script src="js/model.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/canvas.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/codegen.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

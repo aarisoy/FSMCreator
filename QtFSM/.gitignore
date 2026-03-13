@@ -55,3 +55,6 @@ qrc_*.cpp
 *.gcda
 *.gcno
 coverage/
+
+# Node.js
+node_modules/

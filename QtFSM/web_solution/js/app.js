@@ -83,6 +83,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'f' || e.key === 'F') { fitView(); }
     if (e.key === 's' || e.key === 'S') { setMode('sel'); }
     if (e.key === 'c' || e.key === 'C') { setMode('con'); }
+    if (e.key === 't' || e.key === 'T') { toggleDesc(); }
     if (e.key === 'd' || e.key === 'D') { setMode('del'); }
     if (e.key === '=' || e.key === '+') { zoomIn(); }
     if (e.key === '-') { zoomOut(); }

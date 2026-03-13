@@ -50,13 +50,28 @@ function renderStates(){
     if(hasIE)indicators.push('var(--yellow)');
     const dotR=4*zoom,dotSpacing=10*zoom;
     const totalW=(indicators.length-1)*dotSpacing;
-    indicators.forEach((col2,di)=>{
-      const dotX=-totalW/2+di*dotSpacing;
+    // Render state descriptions if toggle is active
+    if (typeof showDesc !== 'undefined' && showDesc && s.comment && s.comment.trim()) {
+      const cy = (s.type==='normal'?13:-5)*zoom;
+      g.appendChild(mkT(0,cy+18*zoom,s.comment,Math.max(8,9.5*zoom),'500','var(--text3)'));
+      // Adjust indicators down a bit to make room
+      const dotY=(s.type==='normal'?42:58)*zoom;
+      indicators.forEach((col2,di)=>{
+        const dotX=-totalW/2+di*dotSpacing;
+        const dot=mkC(dotX,dotY,dotR,col2,'none',0);
+        dot.setAttribute('opacity','0.85');
+        g.appendChild(dot);
+      });
+    } else {
       const dotY=(s.type==='normal'?28:50)*zoom;
-      const dot=mkC(dotX,dotY,dotR,col2,'none',0);
-      dot.setAttribute('opacity','0.85');
-      g.appendChild(dot);
-    });
+      indicators.forEach((col2,di)=>{
+        const dotX=-totalW/2+di*dotSpacing;
+        const dot=mkC(dotX,dotY,dotR,col2,'none',0);
+        dot.setAttribute('opacity','0.85');
+        g.appendChild(dot);
+      });
+    }
+
     g.addEventListener('mousedown',e=>{e.stopPropagation();nodeMD(e,s.id);});
     g.addEventListener('dblclick',e=>{e.stopPropagation();openSE(s.id);});
     SL.appendChild(g);
@@ -73,7 +88,10 @@ function renderTrans(){
     if(!fr||!to)return;
     const k=[t.from,t.to].sort().join('|');
     pi[k]=(pi[k]||0)+1;
-    const idx=pi[k],tot=pc[k],off=(idx-(tot+1)/2)*30;
+    const idx=pi[k],tot=pc[k];
+    let off=(idx-(tot+1)/2)*35; // increased spacing slightly from 30 to 35
+    if (t.from > t.to) { off = -off; }
+    
     const isSel=t.id===selId;
     const col=isSel?'var(--accent)':'var(--accent2)';
     const mkr=isSel?'url(#arrow-sel)':'url(#arrow)';
@@ -92,15 +110,18 @@ function renderTrans(){
       const ox=-dy/len*off,oy=dx/len*off;
       const sx=fx+dx/len*sr+ox,sy=fy+dy/len*sr+oy;
       const ex=tx-dx/len*(er+10*zoom)+ox,ey=ty-dy/len*(er+10*zoom)+oy;
-      const p=mkP(`M ${sx} ${sy} L ${ex} ${ey}`,'none',col,1.7*zoom);
+
+      const p=mkP(`M ${sx} ${sy} L ${ex} ${ey}`,'none',col,1.5*zoom);
       p.setAttribute('marker-end',mkr);g.appendChild(p);
-      const lbl=(t.event||'')+(t.guard?` [${t.guard}]`:'');
-      if(lbl){
-        const lx=(sx+ex)/2,ly=(sy+ey)/2;
-        const lox=-dy/len*12*zoom,loy=dx/len*12*zoom;
-        const tw=lbl.length*6.5*zoom+14;
-        const bg=mkR(lx+lox-tw/2,ly+loy-8*zoom,tw,15*zoom,4*zoom,'var(--surface)','none',0);bg.setAttribute('opacity','0.9');g.appendChild(bg);
-        g.appendChild(mkT(lx+lox,ly+loy+1,lbl,Math.max(9,11*zoom),'600',col));
+
+      const lbl = t.event || '';
+      if (lbl) {
+        const lx=(sx+ex)/2, ly=(sy+ey)/2;
+        const tw = lbl.length*6.5*zoom + 16;
+        // Pill-shaped label background
+        const bg=mkR(lx-tw/2,ly-10*zoom,tw,20*zoom,10*zoom,'var(--bg)','var(--border)',1);
+        bg.setAttribute('opacity','0.95');g.appendChild(bg);
+        g.appendChild(mkT(lx,ly+1,lbl,Math.max(9.5,11*zoom),'600',col));
       }
     }
     g.addEventListener('mousedown',e=>{e.stopPropagation();selId=t.id;renderAll();});

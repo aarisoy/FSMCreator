@@ -230,7 +230,6 @@
 
 /* Canvas */
 #cw{flex:1;position:relative;overflow:hidden;cursor:default;min-height:0;transition:flex .28s ease;}
-#cw::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--canvas-grid) 1px,transparent 1px),linear-gradient(90deg,var(--canvas-grid) 1px,transparent 1px);background-size:28px 28px;}
 #cc.cve #cw{flex:0 0 38%;}
 
 /* Expand tab handles */

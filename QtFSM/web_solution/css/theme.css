@@ -13,7 +13,7 @@ html,body{height:100%;overflow:hidden;}
   --green:#50d890;--red:#e85c6c;--yellow:#e8cc50;
   --state-fill:#1a1f38;--state-stroke:#6c8ef5;--state-text:#e2e6ff;
   --canvas-grid:rgba(255,255,255,.028);--shadow:0 8px 32px rgba(0,0,0,.6);
-  --font-ui:'Inter','Segoe UI',system-ui,sans-serif;
+  --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif;
   --font-mono:'Consolas','Courier New',monospace;
   --kw:#d0a0f0;--num:#f78c6c;--str:#c3e88d;--cmt:#546e7a;--type:#82aaff;--pp:#e89050;
   --card-glass:rgba(22,24,38,.7);--card-border:rgba(108,142,245,.2);
@@ -27,6 +27,8 @@ html,body{height:100%;overflow:hidden;}
   --green:#1a9455;--red:#c02840;--yellow:#a07800;
   --state-fill:#e8eeff;--state-stroke:#3a72e8;--state-text:#1a1d2e;
   --canvas-grid:rgba(0,0,0,.05);--shadow:0 4px 24px rgba(0,0,0,.1);
+  --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif;
+  --font-mono:'Consolas','Courier New',monospace;
   --kw:#7c3aed;--num:#b45309;--str:#15803d;--cmt:#94a3b8;--type:#1d4ed8;--pp:#c86020;
   --card-glass:rgba(255,255,255,.85);--card-border:rgba(58,114,232,.2);
   --hero-grad:linear-gradient(135deg,rgba(58,114,232,.06) 0%,rgba(200,96,32,.04) 50%,rgba(26,148,85,.04) 100%);

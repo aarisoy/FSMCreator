@@ -54,7 +54,10 @@ function buildHeaderSection(fsmData, ns) {
     });
 
     var stateEnumEntries = states.map(function(s) {
-        return '        ' + s.name.toUpperCase();
+        var cmt = (s.comment && s.comment.trim()) 
+            ? '        // ' + s.comment.trim().replace(/\n/g, '\n        // ') + '\n'
+            : '';
+        return cmt + '        ' + s.name.toUpperCase();
     }).join(',\n');
 
     var eventEnumEntries = evs.map(function(e) {
@@ -417,6 +420,9 @@ function exportJson() {
 function exportDsl() {
     var d = '// FSM: ' + fsm.name + '\nFSM: ' + fsm.name + '\n';
     fsm.states.forEach(function(s) {
+        if (s.comment && s.comment.trim()) {
+            d += '// ' + s.comment.trim().replace(/\n/g, '\n// ') + '\n';
+        }
         d += 'STATE: ' + s.name + '\n';
     });
     var ini = fsm.states.find(function(s) { return s.id === fsm.initial; });

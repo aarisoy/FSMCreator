@@ -65,6 +65,16 @@ function toggleCodeInput() {
     }
 }
 
+/* ═══ CANVAS DESC ═══ */
+var showDesc = false;
+
+function toggleDesc() {
+    showDesc = !showDesc;
+    var btn = document.getElementById('btn-desc');
+    if (btn) { btn.classList.toggle('active', showDesc); }
+    renderAll();
+}
+
 /* ═══ CODE VIEWER ═══ */
 var cvOpen = false;
 var cvXP = false;
